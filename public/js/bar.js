@@ -4,6 +4,8 @@ import { rbox } from './shapes.js';
 import * as TX from './textures.js';
 import { createAvatar, makeMug, makeBottle } from './avatar.js';
 import { drawIcon } from './ui-icons.js';
+import { applyEnv } from './env.js';
+import { SPONSORS } from './sponsors.js';
 
 const FT = window.FT;
 
@@ -17,12 +19,16 @@ export const BAR = {
   jukebox: { x: 9.2, z: -3.2 },
   vipDoor: { x: 10, z: 0 },
   vipCenter: { x: 14, z: 0 },
+  // banheiro: anexo a oeste, a porta fica na parede oeste do salão
+  wc: { x0: -14.2, x1: -10, z0: -3.3, z1: 1.9, doorZ: -0.6, doorW: 1.5 },
+  toilets: [{ x: -13.75, z: -2.0 }, { x: -13.75, z: 0.6 }],
+  sponsors: { x: -1.8, z: 6.9 }, // painel de patrocinadores na parede sul
 };
 
-export function createBar(quality = 'high') {
+export function createBar(quality = 'high', renderer = null) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x07040a);
-  scene.fog = new THREE.FogExp2(0x0a0508, 0.035);
+  scene.background = new THREE.Color(0x1b1016);
+  scene.fog = new THREE.FogExp2(0x1a0e12, 0.016);
   const hi = quality === 'high';
   const root = new THREE.Group();
   scene.add(root);
@@ -74,12 +80,16 @@ export function createBar(quality = 'high') {
   brickTex.repeat.set(5, 1.4); brickTexS.repeat.set(3.5, 1.4);
   wall(20, 0, -7, 0, brickTex, panelTex);                 // norte
   wall(20, 0, 7, Math.PI, brickTex, panelTex);            // sul
-  wall(14, -10, 0, Math.PI / 2, brickTexS, panelTexS);    // oeste
+  { const D = BAR.wc.doorZ, hw = BAR.wc.doorW / 2; // oeste, com o vão da porta do banheiro
+    wall(7 + (D - hw), -10, (-7 + (D - hw)) / 2, Math.PI / 2, brickTexS, panelTexS);
+    wall(7 - (D + hw), -10, ((D + hw) + 7) / 2, Math.PI / 2, brickTexS, panelTexS); }
   wall(5.8, 10, -4.1, -Math.PI / 2, brickTexS, panelTexS);  // leste (norte da porta)
   wall(5.8, 10, 4.1, -Math.PI / 2, brickTexS, panelTexS);   // leste (sul da porta)
   {
     const lint = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.15), M(brickTexS));
     lint.position.set(9.995, 2.925, 0); lint.rotation.y = -Math.PI / 2; root.add(lint);
+    const lintW = new THREE.Mesh(new THREE.PlaneGeometry(BAR.wc.doorW, 1.2), M(brickTexS)); // acima da porta do banheiro
+    lintW.position.set(-9.995, 2.9, BAR.wc.doorZ); lintW.rotation.y = Math.PI / 2; root.add(lintW);
   }
 
   // vigas do teto
@@ -91,7 +101,7 @@ export function createBar(quality = 'high') {
   box(7.6, 1.05, 0.8, M(woodFront), cx, 0.525, -5.8);
   surfaces.push(box(7.9, 0.07, 1.05, M(woodTexL, { roughness: 0.35 }), cx, 1.085, -5.78));
   box(7.6, 0.06, 0.06, new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.3 }), cx, 0.28, -5.35, root, false); // apoio de pé
-  for (let i = 0; i < 4; i++) box(1.6, 0.7, 0.04, M(woodTexL), cx - 2.8 + i * 1.9 + 0.9, 0.55, -5.395); // almofadas
+  for (let i = 0; i < 4; i++) box(1.7, 0.7, 0.04, M(woodTexL), cx - 2.85 + i * 1.9, 0.55, -5.395); // almofadas (alinhadas ao corpo do balcão: -9.05 a -1.45)
   rect(-9.15, -6.9, -1.35, -5.25);
 
   // prateleiras + garrafas (instanciadas)
@@ -123,7 +133,7 @@ export function createBar(quality = 'high') {
     const x = cx - 2.2 + i * 0.55;
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 10), brass); tower.position.set(x, 1.28, -5.95); tower.castShadow = true; root.add(tower);
     const spout = new THREE.Mesh(rbox(0.04, 0.04, 0.12), brass); spout.position.set(x, 1.4, -5.88); root.add(spout);
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), new THREE.MeshStandardMaterial({ color: [0xd33, 0x3377aa, 0x33aa44, 0xddaa33, 0x8844aa][i] })); handle.position.set(x, 1.52, -5.95); root.add(handle);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), new THREE.MeshStandardMaterial({ color: [0xdd3333, 0x3377aa, 0x33aa44, 0xddaa33, 0x8844aa][i] })); handle.position.set(x, 1.52, -5.95); root.add(handle);
   }
   for (const x of [-8.4, -3.3, -2.6, -1.9]) { const m = makeMug(); m.position.set(x, 1.19, -5.55); m.scale.setScalar(1.1); root.add(m); }
 
@@ -161,7 +171,7 @@ export function createBar(quality = 'high') {
     const shade = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.22, 20, 1, true), lampShade); shade.position.y = 0.0; lamp.add(shade);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), bulbMat); bulb.position.y = -0.05; lamp.add(bulb);
     root.add(lamp);
-    const spot = new THREE.SpotLight(0xffd9a0, 26, 9, 0.95, 0.7, 2);
+    const spot = new THREE.SpotLight(0xffd9a0, 40, 9, 1.0, 0.7, 2);
     spot.position.set(x, 2.3, z); spot.target.position.set(x, 0, z);
     if (hi && i < 5) {
       spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.bias = -0.0004; spot.shadow.camera.near = 0.5; spot.shadow.camera.far = 8;
@@ -172,11 +182,11 @@ export function createBar(quality = 'high') {
 
   // iluminação do balcão (sem sombra, barata)
   for (const x of [-8, -5.2, -2.4]) {
-    const p = new THREE.PointLight(0xffc27a, 6, 6.5, 2);
+    const p = new THREE.PointLight(0xffc27a, 12, 7.5, 2);
     p.position.set(x, 2.8, -4.6); root.add(p);
   }
-  const fill = new THREE.HemisphereLight(0xffddb8, 0x20120a, hi ? 0.28 : 0.45);
-  root.add(fill);
+  const fill = new THREE.HemisphereLight(0xffe6c8, 0x3a2418, hi ? 0.85 : 1.05);
+  root.add(fill, new THREE.AmbientLight(0xffe2c4, 0.22));
 
   // ---------------- letreiro neon ----------------
   const neonCanvas = TX.neonSign([
@@ -250,8 +260,8 @@ export function createBar(quality = 'high') {
   };
   wp('MODÃO RAIZ', 'sexta tem!', '#3a1a5a', '#a02a4a', 9.96, 1.9, 3.4, -Math.PI / 2);
   wp('CERVEJA GELADA', 'sempre', '#0a4a6a', '#2aa0b0', 9.96, 1.9, 5.3, -Math.PI / 2);
-  wp('SERTANEJO', 'ao vivo', '#6a3a0a', '#d08a2a', -9.96, 1.9, -1.8, Math.PI / 2);
-  wp('FIADO', 'só amanhã', '#5a0a0a', '#b02a1a', -9.96, 1.9, 0.6, Math.PI / 2);
+  wp('SERTANEJO', 'ao vivo', '#6a3a0a', '#d08a2a', -9.96, 1.9, -2.7, Math.PI / 2);
+  wp('FIADO', 'só amanhã', '#5a0a0a', '#b02a1a', -9.96, 1.9, 1.4, Math.PI / 2);
 
   // ---------------- jukebox ----------------
   const jb = new THREE.Group(); jb.position.set(9.45, 0, -3.2); jb.rotation.y = -Math.PI / 2;
@@ -287,6 +297,45 @@ export function createBar(quality = 'high') {
     root.add(g);
     circle(x, z, 0.42 * k);
   });
+
+
+  // ================= PAINEL DE PATROCINADORES (parede sul) =================
+  {
+    const SP = BAR.sponsors, PW = 7.6, PH = 2.6;
+    const g = new THREE.Group(); g.position.set(SP.x, 1.95, 6.93); g.rotation.y = Math.PI; root.add(g);
+    const goldFrame = new THREE.MeshStandardMaterial({ color: 0xe6b84e, metalness: 0.7, roughness: 0.3 });
+    box(PW + 0.26, PH + 0.26, 0.08, goldFrame, 0, 0, -0.01, g, false);
+    // fundo claro "caixa de luz": cores sem escurecer (não passa pelo tone mapping) = logos nítidas
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshBasicMaterial({ color: 0xfffaf0, toneMapped: false }));
+    board.position.z = 0.035; g.add(board);
+    // título
+    const tc = document.createElement('canvas'); tc.width = 1024; tc.height = 128;
+    const tTex = new THREE.CanvasTexture(tc); tTex.colorSpace = THREE.SRGBColorSpace; tTex.anisotropy = 8;
+    const drawTitle = () => {
+      const c = tc.getContext('2d'); c.clearRect(0, 0, 1024, 128); c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = '82px Bungee, Impact, sans-serif'; c.fillStyle = '#ffd77a'; c.fillText('PATROCINADORES', 514, 68); c.fillStyle = '#b3123f'; c.fillText('PATROCINADORES', 512, 64);
+      tTex.needsUpdate = true;
+    };
+    drawTitle();
+    if (document.fonts && document.fonts.load) document.fonts.load('82px Bungee').then(drawTitle).catch(() => {});
+    const title = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.575), new THREE.MeshBasicMaterial({ map: tTex, transparent: true, toneMapped: false }));
+    title.position.set(0, PH / 2 - 0.38, 0.05); g.add(title);
+    // um cartão branco por patrocinador, com a logo ORIGINAL (a imagem enviada, sem redesenhar)
+    const loader = new THREE.TextureLoader();
+    const cardW = 1.34, cardH = 1.7, gap = 0.12, n = SPONSORS.length;
+    const x0 = -((n * cardW + (n - 1) * gap) / 2) + cardW / 2;
+    SPONSORS.forEach((sp, i) => {
+      const x = x0 + i * (cardW + gap), y = -0.2;
+      const rim = new THREE.Mesh(rbox(cardW + 0.07, cardH + 0.07, 0.02, 0.03), new THREE.MeshBasicMaterial({ color: 0xf1d792, toneMapped: false })); rim.position.set(x, y, 0.05); g.add(rim);
+      const card = new THREE.Mesh(rbox(cardW, cardH, 0.02, 0.03), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); card.position.set(x, y, 0.058); g.add(card);
+      const k = Math.min((cardW - 0.14) / sp.w, (cardH - 0.14) / sp.h);
+      const logo = new THREE.Mesh(new THREE.PlaneGeometry(sp.w * k, sp.h * k), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+      logo.position.set(x, y, 0.072); g.add(logo);
+      loader.load(sp.img, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; logo.material.map = tex; logo.material.needsUpdate = true; });
+    });
+    const spLight = new THREE.PointLight(0xfff0d0, 9, 7, 2); spLight.position.set(SP.x, 2.9, 6.0); root.add(spLight);
+    const spLight2 = new THREE.SpotLight(0xfff6e0, 20, 8, 0.8, 0.6, 2); spLight2.position.set(SP.x, 3.3, 4.4); spLight2.target.position.set(SP.x, 1.8, 6.9); root.add(spLight2, spLight2.target);
+  }
 
   // ---------------- porta de entrada ----------------
   box(1.3, 2.3, 0.1, M(woodFront), 3.2, 1.15, 6.93, root, false);
@@ -341,7 +390,7 @@ export function createBar(quality = 'high') {
   root.add(maidSpot, maidSpot.target);
   {
     rect(-0.95, -6.95, -0.15, -6.3); // geladeira no fim do balcão
-    box(0.8, 1.55, 0.6, M(TX.toTex(TX.woodDark([210, 12, 22], 51)), { roughness: 0.4, metalness: 0.5 }), -0.55, 0.78, -6.6);
+    box(0.8, 1.55, 0.6, new THREE.MeshStandardMaterial({ color: 0xc9d1d8, roughness: 0.35, metalness: 0.55 }), -0.55, 0.78, -6.6);
     const glassDoor = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 1.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9fd8ff).multiplyScalar(1.4), transparent: true, opacity: 0.55 }));
     glassDoor.position.set(-0.55, 0.85, -6.29); root.add(glassDoor);
     for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const b = makeBottle(); b.scale.setScalar(0.55); b.position.set(-0.77 + k * 0.22, 0.28 + i * 0.28, -6.38); root.add(b); }
@@ -476,6 +525,90 @@ export function createBar(quality = 'high') {
   for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { t: i / 8 }; sp.scale.setScalar(0.22); root.add(sp); notes.push(sp); }
   let musicOn = false;
 
+
+  // ================= BANHEIRO =================
+  const WC = BAR.wc;
+  const wcW = WC.x1 - WC.x0, wcD = WC.z1 - WC.z0, wcCx = (WC.x0 + WC.x1) / 2, wcCz = (WC.z0 + WC.z1) / 2;
+  const wcg = new THREE.Group(); root.add(wcg);
+  const paintMat = new THREE.MeshStandardMaterial({ color: 0xd9ccb0, roughness: 0.9 });
+  const ceramic = new THREE.MeshStandardMaterial({ color: 0xf6f5f0, roughness: 0.2, metalness: 0 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xdfe6ee, roughness: 0.2, metalness: 0.9 });
+  const teal = new THREE.MeshStandardMaterial({ color: 0x2f9a93, roughness: 0.55 });
+  // piso e teto
+  const wcFloor = new THREE.Mesh(new THREE.PlaneGeometry(wcW, wcD), M(TX.toTex(TX.checker('#c3ced4', '#eef3f5', '#8f9ca4'), { repeat: [wcW, wcD] }), { roughness: 0.25 }));
+  wcFloor.rotation.x = -Math.PI / 2; wcFloor.position.set(wcCx, 0.004, wcCz); wcFloor.receiveShadow = true; wcg.add(wcFloor);
+  const wcCeil = new THREE.Mesh(new THREE.PlaneGeometry(wcW, wcD), paintMat);
+  wcCeil.rotation.x = Math.PI / 2; wcCeil.position.set(wcCx, 3.5, wcCz); wcg.add(wcCeil);
+  // paredes: azulejo até 1,6 m, pintura em cima
+  const wcWall = (w, x, z, ry) => {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+    const lo = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.6), M(TX.toTex(TX.tiles('#eef2f3', '#9aa6ad', 4), { repeat: [w, 1.6] }), { roughness: 0.3 }));
+    lo.position.y = 0.8; lo.receiveShadow = true; g.add(lo);
+    const up = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.9), paintMat); up.position.y = 2.55; g.add(up);
+    const strip = new THREE.Mesh(rbox(w, 0.06, 0.03), teal); strip.position.set(0, 1.62, 0.012); g.add(strip);
+    wcg.add(g);
+  };
+  const dz0 = WC.doorZ - WC.doorW / 2, dz1 = WC.doorZ + WC.doorW / 2;
+  wcWall(wcD, WC.x0, wcCz, Math.PI / 2);                 // fundo (oeste)
+  wcWall(wcW, wcCx, WC.z0, 0);                           // norte
+  wcWall(wcW, wcCx, WC.z1, Math.PI);                     // sul
+  wcWall(dz0 - WC.z0, WC.x1 - 0.01, (WC.z0 + dz0) / 2, -Math.PI / 2);   // leste (lado de dentro), antes da porta
+  wcWall(WC.z1 - dz1, WC.x1 - 0.01, (dz1 + WC.z1) / 2, -Math.PI / 2);   // leste, depois da porta
+  { const l = new THREE.Mesh(new THREE.PlaneGeometry(WC.doorW, 1.2), paintMat); l.position.set(WC.x1 - 0.01, 2.9, WC.doorZ); l.rotation.y = -Math.PI / 2; wcg.add(l); }
+  // moldura da porta (lado do salão)
+  for (const z of [dz0, dz1]) box(0.14, 2.3, 0.14, M(woodTex), -9.96, 1.15, z, root, false);
+  box(0.14, 0.14, WC.doorW + 0.14, M(woodTex), -9.96, 2.33, WC.doorZ, root, false);
+  // placa WC em neon acima da porta
+  const wcNeonMat = new THREE.MeshBasicMaterial({ map: TX.toTex(TX.neonSign([
+    { text: 'WC', y: 100, size: 120, color: '#38e1ff', glow: '#0aa6d6', core: '#e6fbff' },
+    { text: 'BANHEIRO', y: 205, size: 70, color: '#38e1ff', glow: '#0aa6d6', core: '#e6fbff' },
+  ], { w: 512, h: 256 })), transparent: true, toneMapped: false });
+  const wcSign = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.6), wcNeonMat); wcSign.position.set(-9.94, 2.85, WC.doorZ); wcSign.rotation.y = Math.PI / 2; root.add(wcSign);
+  const wcSignLight = new THREE.PointLight(0x38e1ff, 5, 4, 2); wcSignLight.position.set(-9.2, 2.8, WC.doorZ); root.add(wcSignLight);
+  // paredes viram obstáculo (com o vão da porta)
+  rect(-10.14, -7, -9.86, dz0); rect(-10.14, dz1, -9.86, 7);
+
+  // vasos sanitários (de frente pra leste, encostados na parede do fundo)
+  BAR.toilets.forEach((T) => {
+    const g = new THREE.Group(); g.position.set(T.x, 0, T.z);
+    box(0.22, 0.62, 0.5, ceramic, -0.34, 0.8, 0, g);                                 // caixa acoplada
+    box(0.32, 0.42, 0.28, ceramic, -0.12, 0.21, 0, g);                               // base
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.13, 0.22, 22), ceramic); bowl.position.set(0.03, 0.42, 0); bowl.scale.set(1.25, 1, 1); bowl.castShadow = true; g.add(bowl);
+    const seat = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.03, 8, 26), new THREE.MeshStandardMaterial({ color: 0x23201e, roughness: 0.4 })); seat.rotation.x = Math.PI / 2; seat.scale.set(1.25, 1, 1); seat.position.set(0.03, 0.535, 0); g.add(seat);
+    const water = new THREE.Mesh(new THREE.CircleGeometry(0.15, 20), new THREE.MeshStandardMaterial({ color: 0x77c8ee, roughness: 0.05, emissive: 0x1a4a66, emissiveIntensity: 0.5 })); water.rotation.x = -Math.PI / 2; water.scale.set(1.25, 1, 1); water.position.set(0.03, 0.5, 0); g.add(water);
+    const lid = new THREE.Mesh(rbox(0.36, 0.035, 0.36), new THREE.MeshStandardMaterial({ color: 0x23201e, roughness: 0.4 })); lid.position.set(-0.2, 0.7, 0); lid.rotation.z = -1.25; g.add(lid);
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 12), chrome); btn.position.set(-0.34, 1.12, 0); g.add(btn);
+    wcg.add(g);
+    rect(WC.x0 - 0.1, T.z - 0.3, T.x + 0.3, T.z + 0.3);
+  });
+  // divisória entre os dois boxes
+  { const zMid = (BAR.toilets[0].z + BAR.toilets[1].z) / 2;
+    box(1.9, 1.8, 0.05, teal, WC.x0 + 0.95, 1.0, zMid, wcg);
+    rect(WC.x0, zMid - 0.05, WC.x0 + 1.9, zMid + 0.05); }
+  // pia + espelho na parede norte
+  { const sx = -11.6, sz = WC.z0 + 0.28;
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.72, 12), ceramic); ped.position.set(sx, 0.38, sz); ped.castShadow = true; wcg.add(ped);
+    box(0.56, 0.16, 0.42, ceramic, sx, 0.82, sz, wcg);
+    const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.16, 8), chrome); tap.position.set(sx, 0.98, sz - 0.12); wcg.add(tap);
+    const spout = new THREE.Mesh(rbox(0.03, 0.03, 0.12), chrome); spout.position.set(sx, 1.05, sz - 0.07); wcg.add(spout);
+    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0xcfe6f2, roughness: 0.04, metalness: 1.0, envMapIntensity: 1.6 })); mirror.position.set(sx, 1.85, WC.z0 + 0.02); wcg.add(mirror);
+    box(0.9, 1.1, 0.03, M(woodTex), sx, 1.85, WC.z0 + 0.012, wcg, false);
+    circle(sx, sz, 0.42); }
+  // lixeira e papel
+  { const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.12, 0.38, 14), new THREE.MeshStandardMaterial({ color: 0x4a5a66, roughness: 0.5 })); bin.position.set(-10.7, 0.19, WC.z0 + 0.3); bin.castShadow = true; wcg.add(bin); circle(-10.7, WC.z0 + 0.3, 0.2);
+    for (const T of BAR.toilets) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 12), new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.9 })); r.rotation.x = Math.PI / 2; r.position.set(T.x - 0.2, 0.95, T.z + 0.38); wcg.add(r); } }
+  // cartaz de aviso em neon
+  const wcWarn = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.62), new THREE.MeshBasicMaterial({ map: TX.toTex(TX.neonSign([
+    { text: 'MIRE NO VASO!', y: 90, size: 74, color: '#ffd23a', glow: '#ff9a00', core: '#fff6d0' },
+    { text: 'obrigado, a gerência', y: 190, size: 48, color: '#ff4fd8', glow: '#c000ff', core: '#ffe6ff' },
+  ], { w: 768, h: 256 })), transparent: true, toneMapped: false }));
+  wcWarn.position.set(WC.x0 + 0.03, 2.35, wcCz); wcWarn.rotation.y = Math.PI / 2; wcg.add(wcWarn);
+  // luz do banheiro: lâmpada fria + calha de led
+  const wcLamp = new THREE.Mesh(rbox(1.2, 0.06, 0.18), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xfff4e0).multiplyScalar(2.2) })); wcLamp.position.set(wcCx, 3.44, wcCz); wcg.add(wcLamp);
+  const wcLight = new THREE.PointLight(0xfff0dc, 22, 11, 1.5); wcLight.position.set(wcCx, 2.9, wcCz); wcg.add(wcLight);
+  const wcLight2 = new THREE.PointLight(0xe8f4ff, 8, 7, 2); wcLight2.position.set(WC.x0 + 1.0, 2.2, WC.z0 + 1.0); wcg.add(wcLight2);
+  const inWC = (p) => p.x < WC.x1 - 0.2;
+
   // ---------------- colisão ----------------
   function collide(p, r = 0.3) {
     const H = BAR.half;
@@ -483,7 +616,10 @@ export function createBar(quality = 'high') {
     if (p.x > H.x) {
       if (p.x < 10.4) { if (Math.abs(p.z) > 0.95) p.x = p.x < 10 ? H.x : 10.4; }
       else { p.z = Math.max(-5.6, Math.min(5.6, p.z)); p.x = Math.min(p.x, 17.5); }
-    } else p.x = Math.max(-H.x, p.x);
+    } else {
+      p.x = Math.max(p.x, WC.x0 + 0.35);                                            // fundo do banheiro
+      if (p.x < WC.x1 - 0.12) p.z = Math.max(WC.z0 + 0.35, Math.min(WC.z1 - 0.35, p.z)); // dentro do banheiro
+    }
     for (const c of colliders) {
       if (c.off) continue;
       if (c.c) {
@@ -565,5 +701,7 @@ export function createBar(quality = 'high') {
     lampSpots.forEach((s, i) => { s.castShadow = on && i < 5; });
   }
 
-  return { scene, colliders, collide, update, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, placeBottle, takeBottle, bottles, surfaces, setVipOpen, inVip, freeBottles, takeFree, setMusicOn(v) { musicOn = v; } };
+  if (renderer) applyEnv(scene, renderer, { diffuse: 0.35, metal: 1.0 });
+
+  return { scene, colliders, collide, update, inWC, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, placeBottle, takeBottle, bottles, surfaces, setVipOpen, inVip, freeBottles, takeFree, setMusicOn(v) { musicOn = v; } };
 }

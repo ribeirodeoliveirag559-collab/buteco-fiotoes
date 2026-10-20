@@ -7,6 +7,7 @@ import { createGame } from './game.js';
 import { initWardrobeUI } from './wardrobe-ui.js';
 import { api } from './api.js';
 import { ic } from './ui-icons.js';
+import { initSponsors } from './sponsors.js';
 
 const FT = window.FT;
 const S = FT.sprites;
@@ -31,7 +32,7 @@ function size() {
   const w = window.innerWidth, h = window.innerHeight;
   post.setSize(w, h, dpr);
   const dr = $('drawer');
-  const portrait = w / h < 0.9 || w <= 820;
+  const portrait = w / h <= 1; // em pé = gaveta embaixo; deitado (mesmo celular) = gaveta do lado
   const drawerW = !portrait && mode === 'wardrobe' ? dr.offsetWidth : 0;
   const drawerH = portrait && mode === 'wardrobe' && dr.classList.contains('open') ? dr.offsetHeight : 0;
   wardrobe.resize(w, h, drawerW, drawerH);
@@ -94,14 +95,14 @@ async function boot() {
   renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.35;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setPixelRatio(dpr);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
 
   acct = loadAcct();
-  wardrobe = createWardrobe(quality, (acct && acct.look && Object.keys(acct.look).length >= 8 ? acct.look : S.DEFAULT_LOOK));
+  wardrobe = createWardrobe(quality, renderer, (acct && acct.look && Object.keys(acct.look).length >= 8 ? acct.look : S.DEFAULT_LOOK));
   gameCam = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 60);
   post = createPost(renderer, wardrobe.scene, wardrobe.camera, quality);
   post.canvas = renderer.domElement;
@@ -115,6 +116,10 @@ async function boot() {
     onLogout: () => { clearAcct(); acct = null; showHome(); },
   });
 
+  // janela de patrocinadores (página inicial, botão do HUD e painel do salão)
+  const sponsors = initSponsors({ onOpen: () => { if (document.pointerLockElement) document.exitPointerLock(); } });
+  FT.openSponsors = sponsors.open;
+
   // página inicial
   document.querySelectorAll('#auth-tabs button').forEach((b) => { b.onclick = () => setAuthMode(b.dataset.m); });
   $('btn-auth').onclick = submitAuth;
@@ -127,6 +132,10 @@ async function boot() {
 
   showHome();
   window.addEventListener('resize', size);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', size);
+  // iPhone: sem zoom de pinça / duplo toque e sem "puxar pra atualizar" durante o jogo
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault());
+  document.addEventListener('touchmove', (e) => { if (mode !== 'home' && !e.target.closest('#panel, #drawer, .modal-card, #chatlog')) e.preventDefault(); }, { passive: false });
   window.addEventListener('orientationchange', () => setTimeout(size, 250));
 
   // arrastar pra girar o personagem
@@ -161,7 +170,7 @@ async function enter({ look }) {
   acct.look = look; saveAcct(acct);
   const session = { pid: acct.pid, token: acct.token, name: acct.name, look, beers: r.beers, points: r.points, vape: r.vape, bottle: r.bottle, glass: r.glass, notice: r.notice, offline: false };
   await new Promise((res) => setTimeout(res, 30));
-  if (!bar) { bar = createBar(quality); bar.scene.add(gameCam); }
+  if (!bar) { bar = createBar(quality, renderer); bar.scene.add(gameCam); }
   if (!game) game = createGame({ bar, camera: gameCam, post, cfg, quality });
   post.setScene(bar.scene, gameCam);
   $('screen-wardrobe').hidden = true;

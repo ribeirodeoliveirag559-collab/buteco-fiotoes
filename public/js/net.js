@@ -5,7 +5,9 @@
   'use strict';
   const FT = (window.FT = window.FT || {});
 
-  const SB_SRC = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
+  // Cliente vendorizado (as versões < 2.5x não conectam com as chaves sb_publishable_...). CDN só de reserva.
+  const SB_SRC = '/vendor/supabase.js';
+  const SB_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
 
   function loadScript(src) {
     return new Promise((res, rej) => {
@@ -59,7 +61,7 @@
     // ---------------- modo Supabase ----------------
     async function startSupabase() {
       try {
-        if (!window.supabase) await loadScript(SB_SRC);
+        if (!window.supabase) { try { await loadScript(SB_SRC); } catch (e) { await loadScript(SB_CDN); } }
         const client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
           realtime: { params: { eventsPerSecond: 20 } },
         });

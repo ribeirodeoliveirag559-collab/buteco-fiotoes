@@ -4,3 +4,9 @@ node_modules/
 
 .vercel
 .env*
+
+# local
+.claude/
+*.log
+.DS_Store
+!.env.example

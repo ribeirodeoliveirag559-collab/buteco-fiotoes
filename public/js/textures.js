@@ -179,3 +179,18 @@ export function checker(c1 = '#0c0a10', c2 = '#2a2230', gold = '#c9a24a') {
   for (let i = 0; i <= 4; i++) { g.fillRect(i * 64 - 1, 0, 2, 256); g.fillRect(0, i * 64 - 1, 256, 2); }
   return c;
 }
+
+// ---- azulejo (banheiro) ----
+export function tiles(base = '#e9eef0', grout = '#98a4ab', n = 4, seed = 8) {
+  const c = canvas(256, 256), g = c.getContext('2d'), r = rng(seed), k = 256 / n;
+  g.fillStyle = grout; g.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const sh = 0.94 + r() * 0.06;
+    g.fillStyle = base; g.fillRect(x * k + 2, y * k + 2, k - 4, k - 4);
+    g.fillStyle = `rgba(0,0,0,${(1 - sh) * 1.2})`; g.fillRect(x * k + 2, y * k + 2, k - 4, k - 4);
+    const gr = g.createLinearGradient(x * k, y * k, x * k + k, y * k + k);
+    gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(0,0,0,.08)');
+    g.fillStyle = gr; g.fillRect(x * k + 2, y * k + 2, k - 4, k - 4);
+  }
+  return c;
+}

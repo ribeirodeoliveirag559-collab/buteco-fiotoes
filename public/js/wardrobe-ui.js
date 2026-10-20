@@ -84,7 +84,7 @@ export function initWardrobeUI(h) {
     thumbs.forEach(drawThumb);
     document.querySelectorAll('#panel .opt').forEach((b) => b.classList.toggle('on', look[b.dataset.key] === b.dataset.id));
   }
-  function checkName() { $('btn-enter').disabled = cleanName($('name').value).length < 2; }
+  function checkName() { $('btn-enter').disabled = $('btn-enter-float').disabled = cleanName($('name').value).length < 2; }
 
   $('name').addEventListener('input', checkName);
   $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-enter').click(); });
@@ -103,7 +103,8 @@ export function initWardrobeUI(h) {
   };
   $('btn-logout').onclick = () => h.onLogout && h.onLogout();
   $('drawer-toggle').onclick = () => { $('drawer').classList.toggle('open'); h.onDrawer && h.onDrawer(); };
-  $('drawer-head').onclick = () => { if (window.innerWidth <= 820) { $('drawer').classList.remove('open'); h.onDrawer && h.onDrawer(); } };
+  $('drawer-head').onclick = () => { if (matchMedia('(max-aspect-ratio: 1/1)').matches) { $('drawer').classList.remove('open'); h.onDrawer && h.onDrawer(); } };
+  $('btn-enter-float').onclick = () => $('btn-enter').click();
 
   return {
     show(profile) {

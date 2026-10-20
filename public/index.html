@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0a0710">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Buteco FIOTÕES">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
   <title>Buteco FIOTÕES</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,6 +60,7 @@
         <div id="auth-error" class="auth-error"></div>
       </form>
 
+      <button type="button" class="sp-link" data-open-sponsors><svg class="ic " aria-hidden="true"><use href="#i-hand-heart"></use></svg> Patrocinadores</button>
       <p class="fine small">Jogo para maiores de 18 anos. Beba com moderação, na vida real também.</p>
     </div>
   </div>
@@ -65,7 +73,6 @@
     <p>Antes de entrar, escolha o visual no guarda-roupa</p>
   </header>
 
-  <button id="drawer-toggle" class="drawer-toggle"><svg class="ic " aria-hidden="true"><use href="#i-shirt"></use></svg> Roupas</button>
   <aside id="drawer" class="open">
     <div class="drawer-head" id="drawer-head">GUARDA-ROUPA</div>
     <label class="name-field">
@@ -88,6 +95,10 @@
     <div id="enter-error" class="fine"></div>
     <button id="btn-logout" class="linkbtn" type="button">Sair da conta</button>
   </aside>
+  <div class="float-bar">
+    <button id="drawer-toggle" class="drawer-toggle" type="button"><svg class="ic " aria-hidden="true"><use href="#i-shirt"></use></svg> Roupas</button>
+    <button id="btn-enter-float" class="primary" type="button">ENTRAR NO BUTECO</button>
+  </div>
   <div class="drag-hint">arraste pra girar o personagem</div>
 </section>
 
@@ -107,6 +118,7 @@
     <div class="hud-tr">
       <button id="btn-board" class="round" title="Placar (Tab)"><svg class="ic " aria-hidden="true"><use href="#i-trophy"></use></svg></button>
       <button id="btn-chat" class="round touch-only" title="Conversar"><svg class="ic " aria-hidden="true"><use href="#i-message-circle"></use></svg></button>
+      <button id="btn-sponsors" class="round" title="Patrocinadores" data-open-sponsors><svg class="ic " aria-hidden="true"><use href="#i-hand-heart"></use></svg></button>
       <button id="btn-music" class="round" title="Música da jukebox"><svg class="ic " aria-hidden="true"><use href="#i-music"></use></svg></button>
       <button id="btn-sound" class="round" title="Efeitos sonoros"><svg class="ic " aria-hidden="true"><use href="#i-volume-2"></use></svg></button>
       <button id="btn-edit" class="round" title="Voltar ao guarda-roupa"><svg class="ic " aria-hidden="true"><use href="#i-shirt"></use></svg></button>
@@ -114,7 +126,7 @@
 
     <div id="status" class="status">
       <div class="beer-count"><span id="beer-n">0</span><small>copos hoje</small></div>
-      <div class="chips"><span class="chip"><svg class="ic " aria-hidden="true"><use href="#i-star"></use></svg> <b id="pts-n">0</b> pts</span><span class="chip" id="vape-chip" hidden><svg class="ic " aria-hidden="true"><use href="#i-wind"></use></svg> <b id="vape-n">0</b></span></div>
+      <div class="chips"><span class="chip"><svg class="ic " aria-hidden="true"><use href="#i-star"></use></svg> <b id="pts-n">0</b> pts</span><span class="chip" id="bottle-chip" hidden title="Copos que ainda restam na garrafa"><svg class="ic " aria-hidden="true"><use href="#i-bottle-wine"></use></svg> <b id="bottle-n">0</b>/5</span><span class="chip" id="vape-chip" hidden><svg class="ic " aria-hidden="true"><use href="#i-wind"></use></svg> <b id="vape-n">0</b></span></div>
       <div class="level"><div id="level-label">Sóbrio</div><div class="bar"><i id="level-bar"></i></div></div>
     </div>
 
@@ -193,6 +205,17 @@
     </div>
   </div>
 </section>
+
+<!-- ===================== PATROCINADORES ===================== -->
+<div id="sponsors" class="modal sp-modal" role="dialog" aria-labelledby="sp-title" hidden>
+  <div class="sp-card-wrap">
+    <button class="sp-close" type="button" aria-label="Fechar"><svg class="ic " aria-hidden="true"><use href="#i-x"></use></svg></button>
+    <p class="sp-kicker">O buteco só abriu as portas graças a eles</p>
+    <h2 id="sp-title" class="sp-title">PATROCINADORES</h2>
+    <div class="sp-grid"></div>
+    <p class="sp-thanks">Obrigado por acreditarem no projeto! <svg class="ic " aria-hidden="true"><use href="#i-heart"></use></svg></p>
+  </div>
+</div>
 
 <script src="js/sprites.js"></script>
 <script src="js/audio.js"></script>

@@ -106,6 +106,16 @@
       if (!ok()) return;
       tone(120, 0.3, 0.4, 'sine', 40); noise(0.2, 200, 0.8, 0.3, 'lowpass');
     },
+    pee() {
+      if (!ok()) return;
+      for (let i = 0; i < 6; i++) tone(900 + i * 140, 0.03, 0.05, 'square', null, i * 0.025); // zíper abrindo
+      noise(3.8, 3800, 0.9, 0.24, 'bandpass', 0.6); noise(3.8, 1500, 0.6, 0.14, 'bandpass', 0.6); // o jato
+      for (let i = 0; i < 5; i++) tone(1700 - i * 150, 0.03, 0.05, 'square', null, 4.55 + i * 0.025); // zíper fechando
+    },
+    flush() {
+      if (!ok()) return;
+      noise(2.2, 700, 0.5, 0.3, 'lowpass'); noise(1.8, 2400, 0.7, 0.1, 'highpass', 0.2);
+    },
     psy() {
       if (!ok()) return;
       [0, 0.12, 0.24, 0.36].forEach((d, i) => tone(500 * Math.pow(1.26, i), 0.5, 0.1, 'sine', null, d));

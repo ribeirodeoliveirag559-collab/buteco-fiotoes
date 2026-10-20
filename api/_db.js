@@ -37,6 +37,7 @@ export function cleanLook(l) {
   return out;
 }
 
+export const BOTTLE_SERVINGS = 5; // cada garrafa rende até 5 copos
 export const VAPE_USES = 20;
 export const POD_COST = 20;
 

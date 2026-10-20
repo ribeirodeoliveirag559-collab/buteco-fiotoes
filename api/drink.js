@@ -1,8 +1,8 @@
-import { db, readJson, send, auth, stateOf } from './_db.js';
+import { db, readJson, send, auth, stateOf, BOTTLE_SERVINGS } from './_db.js';
 
 // Cerveja não é infinita. O caminho é:
-//   order  -> a garçonete deixa uma garrafa no balcão       (bottle = 1)
-//   pour   -> clicar na garrafa e servir no copo            (bottle = 0, glass = 1)
+//   order  -> a garçonete entrega uma garrafa               (bottle = 5 copos)
+//   pour   -> clicar na garrafa e servir um copo            (bottle -= 1, glass = 1)
 //   start/finish -> beber o copo (>= MIN_MS)                (glass = 0, +1 ponto)
 const MIN_MS = 4400;
 
@@ -19,14 +19,17 @@ export default async function handler(req, res) {
       case 'grab': // cerveja grátis deixada nas mesas
       case 'order':
         if (me.bottle || me.glass) return reply(false, me.glass ? 'copo-cheio' : 'ja-tem-garrafa');
-        await sql`update players set bottle = 1, last_seen = now() where pid = ${me.pid}`;
+        await sql`update players set bottle = ${BOTTLE_SERVINGS}, last_seen = now() where pid = ${me.pid}`;
         return reply(true);
 
       case 'pour':
         if (!me.bottle) return reply(false, 'sem-garrafa');
         if (me.glass) return reply(false, 'copo-cheio');
-        await sql`update players set bottle = 0, glass = 1, last_seen = now() where pid = ${me.pid}`;
-        return reply(true);
+        // atômico: só serve se ainda tem cerveja na garrafa e o copo está vazio
+        const poured = await sql`
+          update players set bottle = bottle - 1, glass = 1, last_seen = now()
+          where pid = ${me.pid} and bottle > 0 and glass = 0 returning bottle`;
+        return poured.length ? reply(true) : reply(false, 'sem-garrafa');
 
       case 'start':
         if (!me.glass) return reply(false, 'sem-copo');

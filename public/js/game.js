@@ -21,6 +21,10 @@ const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
 const SPEED = 3.1;
 const DRINK_MS = 5000;
+// limites do mundo (salão + banheiro a oeste + camarote a leste) pra posição dos outros jogadores
+const WX0 = -14.3, WX1 = 18, WZ0 = -6.6, WZ1 = 6.6;
+const PEE_SECONDS = 4.8, PEE_RELIEF = 4, PEE_COOLDOWN_MS = 25000; // urinar baixa 4 pontos de embriaguez (de 20)
+const BOTTLE_SERVINGS = 5; // cada garrafa rende até 5 copos
 const MAX_BAC = 20; // a partir daqui o personagem cai e levanta sem parar até o nível baixar
 
 export function createGame({ bar, camera, post, cfg, quality }) {
@@ -75,6 +79,15 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   // luz própria pro braço (fica sempre visível mesmo no escuro)
   const vmLight = new THREE.PointLight(0xffe0b0, 1.4, 2.5, 2);
   vmLight.position.set(0.1, 0.2, 0.3); camera.add(vmLight);
+
+  // jato do xixi (primeira pessoa) + respingos
+  const fpPee = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.012, 1, 8), new THREE.MeshBasicMaterial({ color: 0xffe93a, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false }));
+  fpPee.visible = false; fpPee.renderOrder = 55; camera.add(fpPee);
+  const peeSplash = [];
+  for (let i = 0; i < 8; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffe93a, transparent: true, depthTest: false, depthWrite: false, opacity: 0, toneMapped: false }));
+    sp.renderOrder = 56; sp.userData = { t: Math.random() }; camera.add(sp); peeSplash.push(sp);
+  }
 
   // fumaça em primeira pessoa
   const puffTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
@@ -143,6 +156,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     $('pts-n').textContent = me.points;
     $('vape-n').textContent = me.vape;
     $('vape-chip').hidden = me.vape <= 0;
+    $('bottle-n').textContent = me.bottle; $('bottle-chip').hidden = me.bottle <= 0;
     $('btn-vape').hidden = me.vape <= 0;
     $('level-label').textContent = levelLabel(me.bac);
     $('level-bar').style.width = clamp((me.bac / MAX_BAC) * 100, 0, 100) + '%';
@@ -210,7 +224,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     av.setName(cleanName(m.n) || 'Alguém');
     p = {
       id, pid: String(m.pid || id).slice(0, 40), name: cleanName(m.n) || 'Alguém', look, av,
-      x: clamp(num(m.x, BAR.spawn.x), -9.5, 9.5), z: clamp(num(m.z, BAR.spawn.z), -6.5, 6.5), ry: num(m.ry, 0),
+      x: clamp(num(m.x, BAR.spawn.x), WX0, WX1), z: clamp(num(m.z, BAR.spawn.z), WZ0, WZ1), ry: num(m.ry, 0),
       vx: 0, vz: 0, rx: 0, rz: 0, rt: 0, beers: clamp(num(m.b, 0) | 0, 0, 999), drunk: clamp(num(m.d, 0), 0, 1),
       drinking: false, smoking: false, vaping: 0, redUntil: Date.now() + clamp(num(m.rd, 0), 0, 120000), koUntil: 0, lastChat: 0, lastMv: 0,
     };
@@ -234,7 +248,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     p.drunk = clamp(num(m.d, 0), 0, 1);
     adoptMusic(m.mu);
     if (m.rd > 0) p.redUntil = Math.max(p.redUntil, Date.now() + clamp(num(m.rd, 0), 0, 120000));
-    if (Date.now() - p.lastMv > 2500) { p.x = p.rx = clamp(num(m.x, p.x), -9.5, 9.5); p.z = p.rz = clamp(num(m.z, p.z), -6.5, 6.5); p.ry = num(m.ry, p.ry); }
+    if (Date.now() - p.lastMv > 2500) { p.x = p.rx = clamp(num(m.x, p.x), WX0, WX1); p.z = p.rz = clamp(num(m.z, p.z), WZ0, WZ1); p.ry = num(m.ry, p.ry); }
   }
   function removePeer(id) {
     const p = players.get(id);
@@ -262,7 +276,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     switch (m.t) {
       case 'mv':
         p.lastMv = Date.now(); p.rt = performance.now();
-        p.rx = clamp(num(m.x, p.x), -9.5, 9.5); p.rz = clamp(num(m.z, p.z), -6.5, 6.5); p.ry = num(m.ry, p.ry);
+        p.rx = clamp(num(m.x, p.x), WX0, WX1); p.rz = clamp(num(m.z, p.z), WZ0, WZ1); p.ry = num(m.ry, p.ry);
         p.vx = clamp(num(m.vx, 0), -6, 6); p.vz = clamp(num(m.vz, 0), -6, 6); p.drunk = clamp(num(m.d, p.drunk), 0, 1);
         break;
       case 'dr': p.drinking = !!m.v; if (m.v) FT.audio.gulp(); break;
@@ -278,6 +292,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       case 'fg': bar.takeFree(Math.floor(num(m.i, -1))); break;
       case 'bp': if (p.bottleMesh) bar.takeBottle(p.bottleMesh); p.bottleMesh = bar.placeBottle({ x: clamp(num(m.x, 0), -10, 18), y: clamp(num(m.y, 1), 0, 2), z: clamp(num(m.z, 0), -7, 7) }); break;
       case 'bt': if (p.bottleMesh) { bar.takeBottle(p.bottleMesh); p.bottleMesh = null; } break;
+      case 'pe': addLog(null, `${p.name} foi ao banheiro`, true, 'droplets'); break;
       case 'vp': p.vaping = 3; p.vapeEmit = false; FT.audio.vape(); break;
       case 'mus': if (typeof m.vid === 'string' && /^[\w-]{11}$/.test(m.vid)) { music.play({ vid: m.vid, t0: num(m.t0, Date.now()), by: String(m.by || '').slice(0, 14) }); addLog(null, `${p.name} colocou uma música na jukebox`, true); } break;
       case 'mst': music.stop(); addLog(null, `${p.name} parou a jukebox`, true); break;
@@ -314,8 +329,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   async function barAct(action) {
     if (session.offline) {
       const L = me;
-      if (action === 'order' || action === 'grab') { if (L.bottle || L.glass) return { ok: false, reason: L.glass ? 'copo-cheio' : 'ja-tem-garrafa' }; L.bottle = 1; return { ok: true, bottle: 1, glass: L.glass }; }
-      if (action === 'pour') { if (!L.bottle) return { ok: false, reason: 'sem-garrafa' }; L.bottle = 0; L.glass = 1; return { ok: true, bottle: 0, glass: 1 }; }
+      if (action === 'order' || action === 'grab') { if (L.bottle || L.glass) return { ok: false, reason: L.glass ? 'copo-cheio' : 'ja-tem-garrafa' }; L.bottle = BOTTLE_SERVINGS; return { ok: true, bottle: L.bottle, glass: L.glass }; }
+      if (action === 'pour') { if (!L.bottle) return { ok: false, reason: 'sem-garrafa' }; if (L.glass) return { ok: false, reason: 'copo-cheio' }; L.bottle--; L.glass = 1; return { ok: true, bottle: L.bottle, glass: 1 }; }
       if (action === 'start') return L.glass ? { ok: true } : { ok: false, reason: 'sem-copo' };
       if (action === 'finish') { if (!L.glass) return { ok: false, reason: 'sem-copo' }; L.glass = 0; return { ok: true, glass: 0, beers: L.beers, points: L.points }; }
     }
@@ -329,7 +344,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (!r || !r.ok) { applyState(r); return say('Opa, deu um tilt aqui… tenta de novo, lindinho!', [{ label: 'Tá', fn: closeDialog }]); }
     applyState(r);
     FT.audio.clink();
-    say('Toma, gato! Uma gelada. Pode ficar com ela na mão ou deixar numa mesa (tecla G)… mas pra encher o copo tem que estar com ela na mão, hein!', [{ label: 'Valeu!', fn: closeDialog }]);
+    say('Toma, gato! Uma gelada que rende 5 copos. Pode ficar com ela na mão ou deixar numa mesa (tecla G)… mas pra encher o copo tem que estar com ela na mão, hein!', [{ label: 'Valeu!', fn: closeDialog }]);
     setTimeout(() => { if (running && me.bottle && !me.bottleLoc) giveBottle(); }, 900);
   }
   const canPour = () => me.bottleLoc === 'hand' && !me.glass && !pour;
@@ -338,7 +353,9 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     const r = await barAct('pour');
     if (!r || !r.ok) { applyState(r); if (r && r.reason === 'copo-cheio') toast('Seu copo já tá cheio! Bebe primeiro', 'beer'); return; }
     applyState(r);
-    me.bottleLoc = null; send({ t: 'bh', v: 0 });
+    // a garrafa continua na mão enquanto ainda tiver cerveja (até 5 copos); vazia, ela some
+    if (me.bottle <= 0) { me.bottleLoc = null; send({ t: 'bh', v: 0 }); toast('A garrafa acabou! Peça outra pra Bella', 'bottle-wine'); }
+    else toast(`Ainda restam ${me.bottle} copo${me.bottle === 1 ? '' : 's'} nessa garrafa`, 'bottle-wine');
     pour = { t: 0 }; FT.audio.pour();
   }
   const rcPut = new THREE.Raycaster();
@@ -368,7 +385,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   }
   function updateDrink(dt) {
     const wantKey = holdBtn || holdKey || holdMouse;
-    const want = wantKey && !isKO() && !me.smoking && !dialogOpen() && !pour && vapingT <= 0 && $('ranking').hidden && !jukeOpen();
+    const want = wantKey && !isKO() && !me.smoking && !(me.peeing > 0) && !dialogOpen() && !pour && vapingT <= 0 && $('ranking').hidden && !jukeOpen();
     if (want && !me.glass) {
       const n = performance.now();
       if (n - lastHint > 4500) { lastHint = n; toast(me.bottle ? (me.bottleLoc === 'table' ? 'Pegue a garrafa da mesa e clique pra encher o copo' : 'Clique (ou E) pra encher o copo com a garrafa') : 'Seu copo tá vazio! Peça uma cerveja pra Bella atrás do balcão', 'beer'); }
@@ -450,7 +467,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     toast('Você ganhou um baseado', 'cigarette');
   }
   function startSmoking() {
-    if (!me.hasJoint || me.smoking || isKO()) return;
+    if (!me.hasJoint || me.smoking || isKO() || me.peeing > 0) return;
     if (dialogOpen()) closeDialog();
     me.hasJoint = false; me.smoking = true; me.smokeLeft = 6.5; me.puffT = 0;
     me.redUntil = Date.now() + 90000; $('btn-smoke').hidden = true;
@@ -462,6 +479,23 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     send({ t: 'sm', v: 0, rd: 90000 }); pushMeta(); FT.audio.psy();
     toast('Eita... tá tudo colorido', 'sparkles');
   }
+  // ---------------- banheiro: urinar no vaso baixa a embriaguez ----------------
+  function usePee(T) {
+    if (me.peeing > 0 || isKO() || dialogOpen() || me.smoking || vapingT > 0 || pour) return;
+    if (me.bac < 0.8) { toast('Você ainda não tá com vontade… bebe mais um pouco', 'droplets'); return; }
+    if (Date.now() < me.peeReadyAt) { toast('Acabou de ir ao banheiro! Espera um pouco', 'droplets'); return; }
+    me.peeing = PEE_SECONDS; me.peeFace = Math.atan2(-(T.x - me.x), -(T.z - me.z));
+    drinkingNow = false; me.drinking = false; drinkT = 0; holdBtn = holdKey = holdMouse = false;
+    FT.audio.pee(); send({ t: 'pe' });
+  }
+  function endPee() {
+    me.peeing = 0; me.peeReadyAt = Date.now() + PEE_COOLDOWN_MS;
+    const relief = Math.min(me.bac, PEE_RELIEF); me.bac -= relief;
+    FT.audio.flush(); pushMeta();
+    toast(relief >= 1 ? 'Ahhh, que alívio! A embriaguez baixou um pouco' : 'Ahhh, que alívio!', 'droplets');
+    updateStatus();
+  }
+
   // ---------------- garçonete Bella: loja ----------------
   function talkMaid() {
     say(`Oi, lindinho! O que vai ser hoje? (Você tem ${me.points} ponto${me.points === 1 ? '' : 's'})`, [
@@ -482,7 +516,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   // ---------------- cigarro eletrônico ----------------
   let vapingT = 0, vapeCloudDone = true;
   function useVape() {
-    if (vapingT > 0 || isKO() || dialogOpen() || me.smoking || pour) return;
+    if (vapingT > 0 || isKO() || dialogOpen() || me.smoking || pour || me.peeing > 0) return;
     if (me.vape <= 0) { toast('Sem pod! Compre um com a Bella por 20 pontos', 'wind'); return; }
     me.vape--; updateStatus();
     vapingT = 3; vapeCloudDone = false;
@@ -542,6 +576,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     test('maid', BAR.maidPos, 3.4, 0.7);
     test('man', BAR.npcPos, 3.4, 0.75);
     test('jukebox', BAR.jukebox, 2.8, 0.5);
+    test('sponsors', BAR.sponsors, 4.2, 0.72);
+    for (const T of BAR.toilets) { const i = viewInfo(T.x, T.z, 2.2, 0.62); if (i.ok && (!best || i.d < best.d)) best = { type: 'toilet', d: i.d, T }; }
     if (!best) { const i = viewInfo(BAR.vipDoor.x - 0.6, BAR.vipDoor.z, 3.4, 0.6); if (i.ok && !vipAllowed) best = { type: 'vip', d: i.d }; }
     return best;
   }
@@ -553,6 +589,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (tg && tg.type === 'maid' && !dialogOpen()) return talkMaid();
     if (tg && tg.type === 'man' && !dialogOpen()) return talkHomem();
     if (tg && tg.type === 'jukebox') return openJukebox();
+    if (tg && tg.type === 'sponsors') return FT.openSponsors && FT.openSponsors();
+    if (tg && tg.type === 'toilet') return usePee(tg.T);
     if (canPour()) return pourBeer();
     if (me.hasJoint) startSmoking();
   }
@@ -561,6 +599,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     maid: () => [ 'heart', isTouch ? 'Toque em FALAR com a Bella' : 'E — falar com a Bella' ],
     man: () => [ 'hand', isTouch ? 'Toque em FALAR' : 'E — falar com o homem' ],
     jukebox: () => [ 'music', isTouch ? 'Toque em MÚSICA' : 'E — pedir música' ],
+    sponsors: () => [ 'hand-heart', isTouch ? 'Toque em VER os patrocinadores' : 'E — ver os patrocinadores' ],
+    toilet: () => [ 'droplets', isTouch ? 'Toque em URINAR' : 'E — urinar no vaso (baixa a embriaguez)' ],
     freebeer: () => [ 'beer', isTouch ? 'Toque em PEGAR a cerveja' : 'E / clique — pegar a cerveja da mesa' ],
     vip: () => [ 'lock', 'Camarote: só o TOP 5 do dia entra' + (vipRank ? ' · você está em #' + vipRank : ' · você ainda não pontuou') ],
   };
@@ -699,7 +739,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     // movimento
     let f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
     let s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
-    if (ko || me.smoking || dialogOpen() || jukeOpen()) { f = s = 0; }
+    if (ko || me.smoking || me.peeing > 0 || dialogOpen() || jukeOpen()) { f = s = 0; }
     const len = Math.hypot(f, s); if (len > 1) { f /= len; s /= len; }
     if (dl > 0 && (f || s)) {
       const w = Math.sin(t * 2.1) * dl * 0.8 + Math.sin(t * 5.7) * dl * 0.3;
@@ -722,6 +762,12 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       me.smokeLeft -= dt; me.puffT -= dt;
       if (me.puffT <= 0) { me.puffT = 1.2; FT.audio.puff(); puffCd = 0.1; }
       if (me.smokeLeft <= 0) endSmoking();
+    }
+    if (me.peeing > 0) {
+      me.peeing -= dt;
+      yaw += angDiff(yaw, me.peeFace) * Math.min(1, dt * 5);
+      pitch += (-0.8 - pitch) * Math.min(1, dt * 3);
+      if (me.peeing <= 0) endPee();
     }
     updateDrink(dt);
     // servir
@@ -809,6 +855,26 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       armPivotL.quaternion.setFromUnitVectors(DOWN, tmpV);
     }
 
+    // jato do xixi
+    {
+      const pe = me.peeing > 0 && me.peeing < PEE_SECONDS - 0.5 && me.peeing > 0.25;
+      vm.visible = !(me.peeing > 0);
+      fpPee.visible = pe;
+      if (pe) {
+        const w = Math.sin(t * 40) * 0.004;
+        const a = new THREE.Vector3(w, -0.27, -0.4), b = new THREE.Vector3(w * 2, -0.5, -0.95);
+        fpPee.position.copy(a).add(b).multiplyScalar(0.5);
+        fpPee.scale.set(1, a.distanceTo(b), 1);
+        fpPee.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clone().sub(b).normalize());
+      }
+      peeSplash.forEach((sp) => {
+        const u = sp.userData; u.t = (u.t + dt * 2.4) % 1;
+        if (!pe) { sp.material.opacity = 0; return; }
+        sp.position.set(Math.sin(u.t * 9 + 1) * 0.07 * u.t, -0.5 + u.t * 0.08, -0.95 - u.t * 0.05);
+        sp.scale.setScalar(0.03 + u.t * 0.05); sp.material.opacity = (1 - u.t) * 0.8;
+      });
+    }
+
     // fumaça em 1ª pessoa
     puffCd -= dt;
     if (puffCd <= 0 && me.smoking) { puffCd = 0.35; const q = fpPuffs.find((x) => x.userData.t < 0); if (q) { q.userData.t = 0; q.position.set(0.05, -0.12, -0.35); } }
@@ -874,7 +940,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     $('btn-drop').hidden = me.bottleLoc !== 'hand';
     const canUse = (!!target && target.type !== 'vip') || canPour();
     $('btn-use').hidden = !isTouch || !canUse;
-    if (canUse) $('btn-use').querySelector('span').textContent = target && target.type !== 'vip' ? (target.type === 'tbottle' || target.type === 'freebeer' ? 'PEGAR' : target.type === 'jukebox' ? 'MÚSICA' : 'FALAR') : 'ENCHER';
+    if (canUse) $('btn-use').querySelector('span').textContent = target && target.type !== 'vip' ? (target.type === 'tbottle' || target.type === 'freebeer' ? 'PEGAR' : target.type === 'jukebox' ? 'MÚSICA' : target.type === 'toilet' ? 'URINAR' : target.type === 'sponsors' ? 'VER' : 'FALAR') : 'ENCHER';
     if (!isTouch) $('crosshair').style.opacity = canUse ? 1 : 0.7;
     // som: volume cai com a distância da jukebox e sobe no camarote
     music.tick(me, bar.inVip(me));
@@ -910,7 +976,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     const look = S.sanitizeLook(sess.look);
     let beers = sess.beers | 0;
     if (sess.offline) { const v = parseInt(localStorage.getItem('buteco:offline:' + new Date().toDateString()) || '0', 10); beers = isNaN(v) ? 0 : v; }
-    me = { pid: sess.pid, name: sess.name, look, x: BAR.spawn.x + rnd(-0.8, 0.8), z: BAR.spawn.z + rnd(-0.3, 0.3), vx: 0, vz: 0, beers, points: sess.points | 0, vape: sess.vape | 0, bottle: sess.bottle | 0, glass: sess.glass | 0, bottleMesh: null, bac: 0, hasJoint: false, jointReadyAt: 0, smokeLeft: 0, puffT: 0, koUntil: 0, koWas: false, redUntil: 0, drinking: false, smoking: false };
+    me = { pid: sess.pid, name: sess.name, look, x: BAR.spawn.x + rnd(-0.8, 0.8), z: BAR.spawn.z + rnd(-0.3, 0.3), vx: 0, vz: 0, beers, points: sess.points | 0, vape: sess.vape | 0, bottle: sess.bottle | 0, glass: sess.glass | 0, bottleMesh: null, bac: 0, hasJoint: false, jointReadyAt: 0, smokeLeft: 0, puffT: 0, koUntil: 0, koWas: false, redUntil: 0, drinking: false, smoking: false, peeing: 0, peeReadyAt: 0, peeFace: 0 };
     // se voltou no mesmo dia, o álcool "volta" proporcional (aprox.)
     const bacKey = 'buteco:bac:' + sess.pid;
     try { const b = JSON.parse(localStorage.getItem(bacKey) || 'null'); if (b && new Date().toDateString() === b.d) me.bac = Math.max(0, b.v - (Date.now() - b.t) / 50000); } catch (e) { /* ok */ }
@@ -956,6 +1022,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     me.bottleLoc = null; armPivotL.visible = false;
     music.stop(); $('jukebox').hidden = true; vapingT = 0; pour = null;
     fpClouds.forEach((c) => { c.userData.t = -1; c.material.opacity = 0; }); fpBottle.visible = false; fpStream.visible = false;
+    fpPee.visible = false; vm.visible = true; if (me) me.peeing = 0;
     unbindInput(); releaseLock();
     players.forEach((p) => { bar.scene.remove(p.av.root); p.av.dispose(); if (p.bottleMesh) bar.takeBottle(p.bottleMesh); }); players.clear();
     if (net) { send({ t: 'sm', v: 0 }); net.close(); net = null; }

@@ -6,13 +6,17 @@
   "description": "Buteco FIOTÕES - bar 3D multiplayer em primeira pessoa",
   "scripts": {
     "dev": "node server.js",
-    "vendor": "node scripts/vendor.mjs"
+    "vendor": "node scripts/vendor.mjs",
+    "db:init": "node scripts/db-init.mjs",
+    "check": "node scripts/check.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "lucide-static": "^1.59.0",
     "three": "0.160.1"
-  }
+  },
+  "license": "MIT"
 }

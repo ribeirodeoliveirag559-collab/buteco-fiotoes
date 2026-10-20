@@ -4,15 +4,16 @@ import { rbox } from './shapes.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import * as TX from './textures.js';
 import { createAvatar, hatMesh } from './avatar.js';
+import { applyEnv } from './env.js';
 
 const FT = window.FT;
 const S = FT.sprites;
 
-export function createWardrobe(quality, look) {
+export function createWardrobe(quality, renderer, look) {
   const hi = quality === 'high';
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0710);
-  scene.fog = new THREE.FogExp2(0x0b0710, 0.06);
+  scene.background = new THREE.Color(0x1c1220);
+  scene.fog = new THREE.FogExp2(0x1c1220, 0.025);
   const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 40);
   scene.add(camera);
 
@@ -42,7 +43,7 @@ export function createWardrobe(quality, look) {
     const b = new THREE.Mesh(rbox(w, h, 0.08), M(woodTex2)); b.position.set(x, y, 0.03); winG.add(b);
   }
   scene.add(winG);
-  const moon = new THREE.SpotLight(0x7a97ff, hi ? 90 : 60, 14, 0.7, 0.8, 1.6);
+  const moon = new THREE.SpotLight(0x7a97ff, hi ? 110 : 80, 14, 0.7, 0.8, 1.6);
   moon.position.set(-5.2, 3.0, 0.9); moon.target.position.set(0, 1.0, 0.3);
   moon.castShadow = hi; moon.shadow.mapSize.set(1024, 1024); moon.shadow.bias = -0.0005;
   scene.add(moon, moon.target);
@@ -130,10 +131,13 @@ export function createWardrobe(quality, look) {
   // lâmpada pendurada
   const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.0, 5), new THREE.MeshLambertMaterial({ color: 0x111 })); cord.position.set(0, 3.35, 0.7); scene.add(cord);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffe3a0).multiplyScalar(2.4) })); bulb.position.set(0, 2.85, 0.7); scene.add(bulb);
-  const bulbLight = new THREE.PointLight(0xffd59a, hi ? 9 : 7, 9, 1.7);
+  const bulbLight = new THREE.PointLight(0xffd59a, hi ? 16 : 13, 11, 1.5);
   bulbLight.position.set(0, 2.8, 0.7); bulbLight.castShadow = hi; bulbLight.shadow.mapSize.set(1024, 1024); bulbLight.shadow.bias = -0.0006;
   scene.add(bulbLight);
-  scene.add(new THREE.HemisphereLight(0x9aa8ff, 0x2a1a10, 0.32));
+  scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x4a3020, 1.0), new THREE.AmbientLight(0xffeedd, 0.35));
+  // luz de frente ("luz de estúdio") pro personagem aparecer bem, sem sombra
+  const keyLight = new THREE.PointLight(0xfff1dc, 18, 12, 1.6); keyLight.position.set(0.8, 2.3, 3.6); scene.add(keyLight);
+  const rimLight = new THREE.PointLight(0xa8c4ff, 7, 9, 2); rimLight.position.set(-2.2, 2.2, -0.2); scene.add(rimLight);
   const wardLight = new THREE.PointLight(0xffb870, 4, 4, 2); wardLight.position.set(0, 1.6, -1.5); scene.add(wardLight);
 
   // poeira no ar
@@ -168,7 +172,7 @@ export function createWardrobe(quality, look) {
     resize(w, h, panelWidth, panelHeight) {
       const aspect = w / h;
       camera.aspect = aspect;
-      const portrait = aspect < 0.9;
+      const portrait = aspect <= 1;
       camera.fov = portrait ? 50 : 38;
       camera.position.set(0, portrait ? 1.6 : 1.5, portrait ? 6.6 + (1 / aspect - 1) * 1.3 : 5.0);
       camera.lookAt(0, portrait ? 1.05 : 1.2, 0);
@@ -188,7 +192,7 @@ export function createWardrobe(quality, look) {
       spin += (spinTarget - spin) * Math.min(1, dt * 8);
       avatar.root.rotation.y = spin + (dragging ? 0 : Math.sin(t * 0.5) * 0.12);
       avatar.update(dt);
-      bulbLight.intensity = (hi ? 9 : 7) * (0.96 + Math.sin(t * 17) * 0.02 + (Math.sin(t * 2.3) > 0.985 ? -0.3 : 0));
+      bulbLight.intensity = (hi ? 16 : 13) * (0.96 + Math.sin(t * 17) * 0.02 + (Math.sin(t * 2.3) > 0.985 ? -0.3 : 0));
       const pos = dust.geometry.attributes.position;
       for (let i = 0; i < N; i++) {
         pos.array[i * 3 + 1] += dt * 0.03; pos.array[i * 3] += Math.sin(t * 0.3 + i) * dt * 0.02;
@@ -199,5 +203,6 @@ export function createWardrobe(quality, look) {
     },
   };
   api.setPose('idle');
+  if (renderer) applyEnv(scene, renderer, { diffuse: 0.4, metal: 1.0 });
   return api;
 }

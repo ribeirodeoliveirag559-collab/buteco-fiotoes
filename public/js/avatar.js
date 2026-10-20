@@ -271,6 +271,8 @@ export function createAvatar(lookIn, opts = {}) {
     };
     P.armL = mkArm(30, 1);   // lado +x da tela = braço esquerdo do avatar
     P.armR = mkArm(5, -1);   // braço direito do avatar (segura caneca/baseado)
+    P.handL = new THREE.Group(); P.handL.position.set(0, -ARM_L + 0.02, 0.02); P.armL.add(P.handL);
+    P.bottle = makeBottle(); P.bottle.scale.setScalar(0.75); P.bottle.position.set(0, 0.05, 0.05); P.bottle.visible = false; P.handL.add(P.bottle);
     // item na mão direita
     P.hand = new THREE.Group();
     P.hand.position.set(0, -ARM_L + 0.02, 0.0);
@@ -390,7 +392,9 @@ export function createAvatar(lookIn, opts = {}) {
       const armPose = Math.max(st.drink, st.smoke, st.vape || 0);
       if (P.legL) {
         P.legL.rotation.x = sw; P.legR.rotation.x = -sw;
-        P.armL.rotation.x = -sw * 0.8 + idle;
+        P.armL.rotation.x = st.bottle ? -1.15 + idle : -sw * 0.8 + idle;
+        P.bottle.visible = !!st.bottle;
+        if (st.bottle) P.bottle.rotation.x = -P.armL.rotation.x;
         const target = st.drink ? -1.95 : st.smoke || st.vape ? -2.05 : sw * 0.8 + idle;
         P.armR.rotation.x += (target - P.armR.rotation.x) * Math.min(1, dt * 10);
         P.armR.rotation.z = armPose ? 0.15 : 0;

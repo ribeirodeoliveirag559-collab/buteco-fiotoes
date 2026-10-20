@@ -10,7 +10,7 @@ export const BAR = {
   spawn: { x: 3.2, z: 5.6 },
   npcPos: { x: -8.6, z: 5.4 },
   poster: { x: 5.6, y: 1.95, z: -6.93, w: 5.4, h: 2.6 },
-  maidPos: { x: 0.95, z: -6.15 },
+  maidPos: { x: -4.6, z: -6.55 },
   serviceTable: { x: -0.35, z: -5.15 },
   jukebox: { x: 9.2, z: -3.2 },
   vipDoor: { x: 10, z: 0 },
@@ -26,6 +26,7 @@ export function createBar(quality = 'high') {
   scene.add(root);
 
   const colliders = []; // {c:1,x,z,r} | {x0,x1,z0,z1}
+  const surfaces = []; // superfícies onde dá pra deixar a garrafa
   const circle = (x, z, r) => colliders.push({ c: 1, x, z, r });
   const rect = (x0, z0, x1, z1) => colliders.push({ x0, z0, x1, z1 });
 
@@ -86,7 +87,7 @@ export function createBar(quality = 'high') {
   // ---------------- balcão ----------------
   const cx = -5.25;
   box(7.6, 1.05, 0.8, M(woodFront), cx, 0.525, -5.8);
-  box(7.9, 0.07, 1.05, M(woodTexL, { roughness: 0.35 }), cx, 1.085, -5.78);
+  surfaces.push(box(7.9, 0.07, 1.05, M(woodTexL, { roughness: 0.35 }), cx, 1.085, -5.78));
   box(7.6, 0.06, 0.06, new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.3 }), cx, 0.28, -5.35, root, false); // apoio de pé
   for (let i = 0; i < 4; i++) box(1.6, 0.7, 0.04, M(woodTexL), cx - 2.8 + i * 1.9 + 0.9, 0.55, -5.395); // almofadas
   rect(-9.15, -6.9, -1.35, -5.25);
@@ -141,7 +142,7 @@ export function createBar(quality = 'high') {
   const bulbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffe2a0).multiplyScalar(2.4) });
   const tableMat = M(woodTexL, { roughness: 0.5 });
   tables.forEach(([x, z], i) => {
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.05, 28), tableMat); top.position.set(x, 0.78, z); top.castShadow = top.receiveShadow = true; root.add(top);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.05, 28), tableMat); top.position.set(x, 0.78, z); top.castShadow = top.receiveShadow = true; root.add(top); surfaces.push(top);
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.76, 10), M(woodTex)); leg.position.set(x, 0.38, z); leg.castShadow = true; root.add(leg);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.04, 20), M(woodTex)); base.position.set(x, 0.02, z); root.add(base);
     for (let k = 0; k < 3; k++) {
@@ -315,43 +316,34 @@ export function createBar(quality = 'high') {
     s.userData = { t: i * 0.6 }; root.add(s); puffs.push(s);
   }
 
-  // ================= GARÇONETE + MESINHA DE SERVIÇO =================
+  // ================= GARÇONETE (atrás do balcão) =================
+  const MAID_Y = 0.42; // estrado atrás do balcão
   const maid = createAvatar(FT.sprites.BARMAID_LOOK, { npc: true, name: 'Bella', curvy: true });
-  maid.root.position.set(BAR.maidPos.x, 0, BAR.maidPos.z);
+  maid.root.position.set(BAR.maidPos.x, MAID_Y, BAR.maidPos.z);
   maid.root.rotation.y = 0;
   maid.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   root.add(maid.root);
-  circle(BAR.maidPos.x, BAR.maidPos.z, 0.45);
-  rect(1.55, -6.95, 2.3, -6.3); // geladeira
-  const maidSpot = new THREE.SpotLight(0xffd6e8, 26, 8, 0.55, 0.6, 2);
-  maidSpot.position.set(BAR.maidPos.x, 3.2, -4.4); maidSpot.target.position.set(BAR.maidPos.x, 1.0, BAR.maidPos.z);
+  box(3.4, MAID_Y, 0.8, M(woodTex), BAR.maidPos.x, MAID_Y / 2, BAR.maidPos.z, root, false);
+  const maidSpot = new THREE.SpotLight(0xffd6e8, 34, 8, 0.6, 0.6, 2);
+  maidSpot.position.set(BAR.maidPos.x, 3.1, -4.6); maidSpot.target.position.set(BAR.maidPos.x, 1.5, BAR.maidPos.z);
   root.add(maidSpot, maidSpot.target);
   {
-    const fr = box(0.8, 1.55, 0.6, M(TX.toTex(TX.woodDark([210, 12, 22], 51)), { roughness: 0.4, metalness: 0.5 }), 1.9, 0.78, -6.6);
+    rect(-0.95, -6.95, -0.15, -6.3); // geladeira no fim do balcão
+    box(0.8, 1.55, 0.6, M(TX.toTex(TX.woodDark([210, 12, 22], 51)), { roughness: 0.4, metalness: 0.5 }), -0.55, 0.78, -6.6);
     const glassDoor = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 1.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9fd8ff).multiplyScalar(1.4), transparent: true, opacity: 0.55 }));
-    glassDoor.position.set(1.9, 0.85, -6.29); root.add(glassDoor);
-    for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const b = makeBottle(); b.scale.setScalar(0.55); b.position.set(1.68 + k * 0.22, 0.28 + i * 0.28, -6.38); root.add(b); }
-    const fl = new THREE.PointLight(0x9fd8ff, 4, 3, 2); fl.position.set(1.9, 1.0, -6.0); root.add(fl);
+    glassDoor.position.set(-0.55, 0.85, -6.29); root.add(glassDoor);
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const b = makeBottle(); b.scale.setScalar(0.55); b.position.set(-0.77 + k * 0.22, 0.28 + i * 0.28, -6.38); root.add(b); }
+    const fl = new THREE.PointLight(0x9fd8ff, 4, 3, 2); fl.position.set(-0.55, 1.0, -6.0); root.add(fl);
   }
-  // mesinha alta: a garçonete deixa a garrafa aqui
-  const ST = BAR.serviceTable;
-  const stTop = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 24), M(woodTexL, { roughness: 0.4 }));
-  stTop.position.set(ST.x, 1.05, ST.z); stTop.castShadow = stTop.receiveShadow = true; root.add(stTop);
-  const stLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.03, 10), brass); stLeg.position.set(ST.x, 0.52, ST.z); stLeg.castShadow = true; root.add(stLeg);
-  const stBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.04, 18), brass); stBase.position.set(ST.x, 0.02, ST.z); root.add(stBase);
-  circle(ST.x, ST.z, 0.55);
-  const slotPos = [[0.2, 0.0], [-0.2, 0.0], [0.0, 0.2], [0.0, -0.2]].map(([dx, dz]) => ({ x: ST.x + dx, z: ST.z + dz, used: null }));
+  // garrafas deixadas sobre mesas (minhas e dos outros)
   const bottles = [];
-  function spawnBottle() {
-    const slot = slotPos.find((sl) => !sl.used) || slotPos[0];
-    const b = makeBottle(); b.position.set(slot.x, 1.075, slot.z); b.scale.setScalar(0.001);
-    b.userData.spawnT = 0; b.userData.slot = slot; b.userData.isBottle = true;
-    slot.used = b; root.add(b); bottles.push(b);
+  function placeBottle(p) {
+    const b = makeBottle(); b.position.set(p.x, p.y, p.z); b.scale.setScalar(0.001);
+    b.userData.spawnT = 0; b.userData.isBottle = true; root.add(b); bottles.push(b);
     return b;
   }
   function takeBottle(b) {
     if (!b) return;
-    if (b.userData.slot) b.userData.slot.used = null;
     root.remove(b); const i = bottles.indexOf(b); if (i >= 0) bottles.splice(i, 1);
   }
 
@@ -405,7 +397,7 @@ export function createBar(quality = 'high') {
   rect(11.2, -5.85, 16.4, -4.9); rect(11.2, 4.9, 16.4, 5.85);
   const iceTables = [[12.4, -3.9], [12.4, 3.9], [14.6, -3.9], [14.6, 3.9]];
   iceTables.forEach(([x, z]) => {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 20), goldM); t.position.set(x, 0.55, z); t.castShadow = true; vip.add(t);
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 20), goldM); t.position.set(x, 0.55, z); t.castShadow = true; vip.add(t); surfaces.push(t);
     const l = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.53, 8), goldM); l.position.set(x, 0.27, z); vip.add(l);
     const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.09, 0.2, 14), new THREE.MeshStandardMaterial({ color: 0xcfd6e0, metalness: 0.9, roughness: 0.2 })); bucket.position.set(x, 0.69, z); vip.add(bucket);
     const bt = makeBottle(); bt.scale.setScalar(0.9); bt.position.set(x, 0.75, z); bt.rotation.z = 0.12; vip.add(bt);
@@ -491,7 +483,7 @@ export function createBar(quality = 'high') {
       const near = Math.hypot(dx, dz) < 7;
       maid.root.rotation.y += ((near ? Math.max(-1.1, Math.min(1.1, want)) : 0) - maid.root.rotation.y) * Math.min(1, dt * 3);
     }
-    maid.root.position.y = Math.sin(t * 1.3) * 0.006;
+    maid.root.position.y = MAID_Y + Math.sin(t * 1.3) * 0.006;
     maid.P.head.rotation.z = Math.sin(t * 0.9) * 0.07;
     winkT -= dt; if (winkT < 0) { winkOn = 0.32; winkT = 3.5 + Math.random() * 4; }
     if (winkOn > 0) { winkOn -= dt; maid.setWink(true); } else maid.setWink(false);
@@ -532,5 +524,5 @@ export function createBar(quality = 'high') {
     lampSpots.forEach((s, i) => { s.castShadow = on && i < 5; });
   }
 
-  return { scene, colliders, collide, update, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, spawnBottle, takeBottle, bottles, setVipOpen, inVip };
+  return { scene, colliders, collide, update, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, placeBottle, takeBottle, bottles, surfaces, setVipOpen, inVip };
 }

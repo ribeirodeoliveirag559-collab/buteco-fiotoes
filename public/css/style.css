@@ -214,3 +214,5 @@ kbd { background: #ffffff22; border-radius: 4px; padding: 0 5px; font-size: .9em
 .jb-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 @media (max-width: 600px) { #ytbox { top: 104px; width: 180px; } .yt-frame { width: 180px; height: 160px; } }
 @media (pointer: coarse) and (max-height: 520px) { #ytbox { top: 54px; width: 160px; } .yt-frame { width: 160px; height: 120px; } }
+
+.round.drop { width: 64px; height: 64px; font-size: 28px; border: 2px solid #ffb43a88; background: radial-gradient(circle at 40% 30%, #4a2a12, #1d0f06); box-shadow: 0 0 18px #ffb43a44; }

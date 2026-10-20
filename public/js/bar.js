@@ -322,7 +322,7 @@ export function createBar(quality = 'high', renderer = null) {
     title.position.set(0, PH / 2 - 0.38, 0.05); g.add(title);
     // um cartão branco por patrocinador, com a logo ORIGINAL (a imagem enviada, sem redesenhar)
     const loader = new THREE.TextureLoader();
-    const cardW = 1.34, cardH = 1.7, gap = 0.12, n = SPONSORS.length;
+    const n = SPONSORS.length, gap = 0.1, cardH = 1.7, cardW = Math.min(1.34, (PW - 0.3 - (n - 1) * gap) / n); // cabe qualquer quantidade de patrocinadores
     const x0 = -((n * cardW + (n - 1) * gap) / 2) + cardW / 2;
     SPONSORS.forEach((sp, i) => {
       const x = x0 + i * (cardW + gap), y = -0.2;

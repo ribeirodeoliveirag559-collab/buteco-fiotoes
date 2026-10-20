@@ -9,6 +9,7 @@ export const SPONSORS = [
   { id: 'dsil', name: 'DSIL', img: '/sponsors/dsil.png', w: 900, h: 350 },
   { id: 'ph-informatica', name: 'PH Informática', img: '/sponsors/ph-informatica.png', w: 824, h: 920 },
   { id: 'mylamaq', name: 'Mylamaq', img: '/sponsors/mylamaq.png', w: 330, h: 287 },
+  { id: 'classic', name: 'Classic Construtora e Imobiliária', img: '/sponsors/classic.png', w: 788, h: 779 },
 ];
 
 // janela "Patrocinadores" (HTML): abre por qualquer botão com [data-open-sponsors]

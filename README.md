@@ -37,7 +37,7 @@ Bar 3D multiplayer em **primeira pessoa**, direto no navegador (PC e celular). T
 
 ## Patrocinadores
 
-Painel iluminado na parede sul do salão (olhe pra ele e aperte `E`, ou use o botão de mãos com coração no HUD / na página inicial) com as logos originais de quem apoiou o jogo: Primetek, Cyber Tech, DSIL, PH Informática e Mylamaq. Os arquivos ficam em `public/sponsors/` e a lista em `public/js/sponsors.js` — adicionar um patrocinador é pôr a imagem lá e uma linha na lista.
+Painel iluminado na parede sul do salão (olhe pra ele e aperte `E`, ou use o botão de mãos com coração no HUD / na página inicial) com as logos originais de quem apoiou o jogo: Primetek, Cyber Tech, DSIL, PH Informática, Mylamaq e Classic Construtora e Imobiliária. Os arquivos ficam em `public/sponsors/` e a lista em `public/js/sponsors.js` — adicionar um patrocinador é pôr a imagem lá e uma linha na lista.
 
 ## Contribuir
 

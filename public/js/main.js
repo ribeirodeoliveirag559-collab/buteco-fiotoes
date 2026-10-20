@@ -116,6 +116,9 @@ async function boot() {
     onLogout: () => { clearAcct(); acct = null; showHome(); },
   });
 
+  // celular: chat e guarda-roupa ficam sempre à mão no topo esquerdo (o resto fica no menu)
+  if (coarse) { const tl = document.querySelector('.hud-tl'); tl.appendChild($('btn-chat')); tl.appendChild($('btn-edit')); }
+
   // janela de patrocinadores (página inicial, botão do HUD e painel do salão)
   const sponsors = initSponsors({ onOpen: () => { if (document.pointerLockElement) document.exitPointerLock(); } });
   FT.openSponsors = sponsors.open;

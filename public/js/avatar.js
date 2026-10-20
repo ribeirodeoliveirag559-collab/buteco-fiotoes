@@ -402,7 +402,7 @@ export function createAvatar(lookIn, opts = {}) {
     root.add(nameSprite);
   }
 
-  function say(text, ms = 6000) {
+  function say(text, ms = 5000) {
     if (bubble) { root.remove(bubble); bubble.material.map.dispose(); bubble.material.dispose(); bubble = null; }
     if (!text) return;
     const c = document.createElement('canvas'); c.width = 512; c.height = 160;
@@ -421,8 +421,8 @@ export function createAvatar(lookIn, opts = {}) {
     ls.forEach((l, i) => g.fillText(l, 256, y0 + 12 + 20 + i * 40));
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
-    bubble.scale.set(1.6, 0.5, 1);
-    bubble.position.y = 2.5; bubble.renderOrder = 11;
+    bubble.scale.set(2.0, 0.625, 1);
+    bubble.position.y = 2.55; bubble.renderOrder = 11;
     root.add(bubble);
     bubbleUntil = performance.now() + ms;
   }

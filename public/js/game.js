@@ -305,7 +305,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       case 'ch': {
         const now = performance.now(); if (now - p.lastChat < 500) return; p.lastChat = now;
         const text = String(m.m == null ? '' : m.m).replace(/[<>]/g, '').slice(0, 90); if (!text) return;
-        p.av.say(text); addLog(p.name, text, false); break;
+        p.av.say(text, 5000); addLog(p.name, text, false); break;
       }
     }
   }
@@ -732,7 +732,14 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   function unbindInput() { handlers.forEach(([el, ev, fn, o]) => el.removeEventListener(ev, fn, o)); handlers.length = 0; }
 
   // meu próprio balão: aparece como toast de chat (câmera em 1ª pessoa não vê a própria cabeça)
-  function mySay() { /* o texto já aparece no log do chat */ }
+  let myBubbleT = null;
+  function mySay(text) {
+    const el = $('mybubble');
+    const who = document.createElement('small'); who.textContent = 'Você'; const msg = document.createElement('span'); msg.textContent = text;
+    el.replaceChildren(who, msg); el.hidden = false;
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    clearTimeout(myBubbleT); myBubbleT = setTimeout(() => { el.hidden = true; }, 5000);
+  }
 
   // ---------------- atualização ----------------
   let lastSent = { x: 1e9, z: 1e9, ry: 1e9, sp: -1 }, lastSendT = 0, metaSig = '';
@@ -1053,7 +1060,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (net) { send({ t: 'sm', v: 0 }); net.close(); net = null; }
     post.setEffects(0, 0, 0, 0);
     camera.fov = 72; camera.updateProjectionMatrix();
-    $('pause').hidden = true; $('screen-game').hidden = true; $('prompt').hidden = true; $('netdiag').hidden = true;
+    $('pause').hidden = true; $('screen-game').hidden = true; $('prompt').hidden = true; $('netdiag').hidden = true; $('mybubble').hidden = true;
   }
   window.addEventListener('beforeunload', () => { if (me && running) { try { localStorage.setItem('buteco:bac:' + me.pid, JSON.stringify({ d: new Date().toDateString(), v: me.bac, t: Date.now() })); } catch (e) { /* ok */ } } });
 

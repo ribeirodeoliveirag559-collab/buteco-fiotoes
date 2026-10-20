@@ -523,3 +523,18 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   .hud-tr.open #btn-menu { order: 99; }
   .drink { width: 92px; height: 92px; } .smoke, .use { width: 58px; height: 58px; } .round.vape, .round.drop { width: 48px; height: 48px; }
 }
+
+
+/* ---------- balão de fala (o meu; os dos outros são em 3D sobre a cabeça) ---------- */
+#mybubble { position: absolute; left: 50%; bottom: 38%; transform: translateX(-50%); max-width: min(82vw, 340px); background: #fffffff2; color: #1b1020; border: 2px solid #00000066; border-radius: 18px; padding: 8px 14px; font: 800 15px/1.25 var(--font); text-align: center; word-break: break-word; box-shadow: 0 6px 18px #0008; pointer-events: none; animation: bubbleIn .2s ease-out; }
+#mybubble::after { content: ''; position: absolute; left: 50%; bottom: -10px; width: 16px; height: 16px; background: #fffffff2; border-right: 2px solid #00000066; border-bottom: 2px solid #00000066; transform: translateX(-50%) rotate(45deg); border-radius: 0 0 4px 0; }
+@keyframes bubbleIn { from { opacity: 0; transform: translateX(-50%) scale(.85); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+
+/* celular: chat e guarda-roupa no topo esquerdo; mensagens dos outros viram balão (não lista) */
+@media (pointer: coarse) {
+  .hud-tl { flex-wrap: nowrap; align-items: center; }
+  .hud-tl .round { display: grid; width: 40px; height: 40px; flex: none; }
+  #chatlog div:not(.sys) { display: none; }
+}
+
+#mybubble small { display: block; font-size: 11px; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; color: #b3123f; margin-bottom: 1px; }

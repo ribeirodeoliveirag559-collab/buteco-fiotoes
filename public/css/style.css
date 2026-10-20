@@ -461,3 +461,65 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 /* diagnóstico de conexão */
 #netmode { cursor: pointer; text-decoration: underline dotted #ffffff55; text-underline-offset: 3px; min-height: 28px; display: inline-flex; align-items: center; }
 #netdiag-text { white-space: pre-wrap; word-break: break-word; font: 700 13px/1.45 ui-monospace, Menlo, Consolas, monospace; background: #150b06; border: 1px solid #6b4a22; border-radius: 12px; padding: 10px 12px; margin: 6px 0 8px; max-height: 50dvh; overflow: auto; user-select: text; -webkit-user-select: text; }
+
+
+/* =====================================================================
+   HUD MÍNIMO NO CELULAR — pouca informação, tudo encaixado
+   topo: [👥 n ●]  ........  [☰]   | contador compacto logo abaixo
+   baixo: joystick à esquerda · botões de ação empilhados à direita
+   ===================================================================== */
+.dot.warn { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.dot.off { background: #ff5a5a; box-shadow: 0 0 8px #ff5a5a; }
+.dot.wait { background: var(--amber); animation: pulse2 1.2s infinite; }
+@media (pointer: coarse) {
+  .hint, .mini-logo { display: none !important; }
+  .hud-tl { gap: 4px; left: calc(10px + var(--sal)); top: calc(10px + var(--sat)); }
+  .pill { padding: 0 10px; min-height: 32px; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
+  #netmode { padding: 0 9px; min-width: 32px; justify-content: center; text-decoration: none; }
+  #netmode .dot { margin: 0; width: 10px; height: 10px; }
+
+  /* menu: os 6 botões saem do topo e ficam atrás de um só */
+  .hud-tr { display: flex !important; flex-direction: column; align-items: flex-end; gap: 6px; grid-template-columns: none; right: calc(10px + var(--sar)); top: calc(8px + var(--sat)); }
+  .hud-tr .round { width: 44px; height: 44px; }
+  .hud-tr .round:not(#btn-menu) { display: none; }
+  .hud-tr.open .round:not(#btn-menu) { display: grid; animation: pop .16s ease-out; }
+  .hud-tr.open #btn-menu { background: var(--pink); }
+
+  /* contador compacto: número de copos + pontos + nível (só a barrinha) */
+  .status { left: 50%; top: calc(54px + var(--sat)); max-width: calc(100vw - 20px); padding: 4px 12px; gap: 10px; border-radius: 16px; }
+  .beer-count small, #level-label { display: none; }
+  .beer-count #beer-n { font-size: 24px; min-width: 0; }
+  .chips { flex-direction: row; gap: 4px; flex-wrap: nowrap; }
+  .chip { font-size: 12px; padding: 1px 7px; }
+  .level { width: 52px; } .level .bar { margin: 0; height: 8px; }
+
+  /* ações: um só bloco empilhado no canto, o botão de beber embaixo */
+  .actions { flex-direction: column; align-items: flex-end; flex-wrap: nowrap; max-width: none; gap: 10px; right: calc(12px + var(--sar)); bottom: calc(30px + var(--sab)); }
+  .smoke, .use { width: 64px; height: 64px; }
+  .round.vape, .round.drop { width: 52px; height: 52px; }
+  .drink { width: 100px; height: 100px; }
+  #joy { width: 112px; height: 112px; left: calc(14px + var(--sal)); bottom: calc(34px + var(--sab)); }
+
+  /* o botão já diz o que faz (FALAR, PEGAR, VER, URINAR...): sem texto repetido no meio da tela */
+  #prompt:not(.tip) { display: none !important; }
+  #prompt.tip { top: 40%; font-size: 13px; padding: 5px 12px; }
+
+  /* chat e avisos discretos */
+  #chatlog { left: calc(10px + var(--sal)); bottom: calc(160px + var(--sab)); width: min(62vw, 250px); font-size: 12px; }
+  #chatlog div { animation-duration: 8s; padding: 2px 8px; }
+  #chatlog div:nth-last-child(n+4) { display: none; }
+  #toast { top: calc(100px + var(--sat)); }
+  #toast div { font-size: 13px; padding: 5px 12px; }
+  #toast div:nth-last-child(n+3) { display: none; }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  /* deitado: tudo na mesma linha do topo */
+  .status { top: calc(8px + var(--sat)); }
+  .actions { bottom: calc(14px + var(--sab)); }
+  #joy { bottom: calc(14px + var(--sab)); }
+  #chatlog { bottom: calc(10px + var(--sab)); left: calc(140px + var(--sal)); width: min(34vw, 260px); }
+  #toast { top: calc(62px + var(--sat)); }
+  .hud-tr.open { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 60vw; }
+  .hud-tr.open #btn-menu { order: 99; }
+  .drink { width: 92px; height: 92px; } .smoke, .use { width: 58px; height: 58px; } .round.vape, .round.drop { width: 48px; height: 48px; }
+}

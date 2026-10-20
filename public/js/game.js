@@ -166,6 +166,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     const el = $('netmode');
     if (s === 'error' && !netWarned) { netWarned = true; toast('Sem conexão com o tempo real (' + String(why || 'falha').slice(0, 70) + '). Tentando de novo sozinho…', 'wifi-off'); }
     if (s === 'online') netWarned = false;
+    if (isTouch) { el.innerHTML = '<i class="dot ' + (s === 'online' ? 'on' : s === 'error' ? 'off' : s === 'local' ? 'warn' : 'wait') + '"></i>'; el.title = s === 'online' ? 'Conectado' : s === 'local' ? 'Modo teste' : s === 'error' ? 'Sem conexão: ' + (why || '') : 'Conectando…'; el.setAttribute('aria-label', el.title); return; }
     el.innerHTML = s === 'online' ? '<i class="dot on"></i>online' : s === 'local' ? ic('flask-conical') + ' teste' : s === 'error' ? ic('wifi-off') + ' offline' : '…';
     el.title = s === 'local' ? 'Modo teste: só enxerga outras abas deste navegador (configure o Supabase Realtime).' : s === 'error' ? 'Sem tempo real: ' + (why || 'falha de conexão') + '. Tentando de novo…' : '';
   }
@@ -672,6 +673,9 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     on($('jb-close'), 'click', closeJukebox);
     on($('yt-hide'), 'click', () => $('ytbox').classList.toggle('mini'));
     on($('btn-music'), 'click', () => { music.setMuted(!music.muted); $('btn-music').classList.toggle('off', music.muted); });
+    const closeMenu = () => { $('hud-tr').classList.remove('open'); $('btn-menu').setAttribute('aria-expanded', 'false'); };
+    on($('btn-menu'), 'click', () => { const o = $('hud-tr').classList.toggle('open'); $('btn-menu').setAttribute('aria-expanded', String(o)); });
+    on($('hud-tr'), 'click', (e) => { if (e.target.closest('.round') && !e.target.closest('#btn-menu')) setTimeout(closeMenu, 0); });
     on($('btn-board'), 'click', openRanking);
     const runDiag = async () => { $('netdiag-text').textContent = 'Testando…'; const t = await FT.netDiag({ SUPABASE_URL: cfg.supabaseUrl, SUPABASE_ANON_KEY: cfg.supabaseAnonKey }); $('netdiag-text').textContent = t; };
     on($('netmode'), 'click', () => { releaseLock(); $('netdiag').hidden = false; runDiag(); });
@@ -694,7 +698,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     // olhar com o dedo (celular)
     const lz = $('lookzone');
     let lp = null;
-    on(lz, 'pointerdown', (e) => { if (lp != null) return; lp = { id: e.pointerId, x: e.clientX, y: e.clientY }; lz.setPointerCapture(e.pointerId); FT.audio.init(); });
+    on(lz, 'pointerdown', (e) => { if (lp != null) return; lp = { id: e.pointerId, x: e.clientX, y: e.clientY }; lz.setPointerCapture(e.pointerId); FT.audio.init(); closeMenu(); });
     on(lz, 'pointermove', (e) => { if (!lp || e.pointerId !== lp.id) return; yaw -= (e.clientX - lp.x) * 0.0055; pitch = clamp(pitch - (e.clientY - lp.y) * 0.0055, -1.4, 1.4); lp.x = e.clientX; lp.y = e.clientY; });
     const lend = (e) => { if (lp && e.pointerId === lp.id) lp = null; };
     on(lz, 'pointerup', lend); on(lz, 'pointercancel', lend);
@@ -938,6 +942,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     const holdingB = me.bottleLoc === 'hand' && !dialogOpen() && !pour;
     const showPrompt = !!target || (me.hasJoint && !me.smoking && !dialogOpen()) || holdingB;
     $('prompt').hidden = !showPrompt;
+    $('prompt').classList.toggle('tip', !!(target && target.type === 'vip'));
     if (showPrompt) {
       const pr = target ? PROMPTS[target.type]()
         : holdingB ? (canPour() ? ['beer', isTouch ? 'Toque em ENCHER o copo · ou LARGAR a garrafa' : 'Clique / E — encher o copo · G — largar a garrafa'] : ['bottle-wine', isTouch ? 'Toque em LARGAR a garrafa' : 'G — largar a garrafa numa mesa'])

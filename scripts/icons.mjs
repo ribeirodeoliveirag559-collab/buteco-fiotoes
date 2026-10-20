@@ -8,7 +8,7 @@ const NAMES = [
   'log-out', 'x', 'play', 'square', 'minimize-2', 'party-popper', 'smartphone', 'rotate-cw', 'user', 'glasses',
   'heart', 'zap', 'cloud', 'flame', 'circle-alert', 'check', 'wifi', 'wifi-off', 'flask-conical', 'skull', 'smile',
   'laugh', 'coins', 'shopping-bag', 'moon-star', 'info', 'hand-heart', 'cloud-fog', 'glass-water',
-  'droplets', 'toilet', 'door-open',
+  'droplets', 'toilet', 'door-open', 'menu',
 ];
 const dir = 'node_modules/lucide-static/icons/';
 let sprite = '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">\n<!-- Lucide icons (https://lucide.dev) — ISC License -->\n';

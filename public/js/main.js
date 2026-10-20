@@ -6,6 +6,7 @@ import { createBar } from './bar.js';
 import { createGame } from './game.js';
 import { initWardrobeUI } from './wardrobe-ui.js';
 import { api } from './api.js';
+import { ic } from './ui-icons.js';
 
 const FT = window.FT;
 const S = FT.sprites;
@@ -61,7 +62,7 @@ function setAuthMode(m) {
 const AUTH_ERR = {
   'nome-em-uso': 'Esse nome já tem dono. Escolha outro ou use "Entrar".',
   'sem-conta': 'Não achei essa conta. Confira o nome ou toque em "Criar conta".',
-  'senha-errada': 'Senha errada 😅',
+  'senha-errada': 'Senha errada',
   'senha-curta': 'A senha precisa de pelo menos 3 caracteres.',
   nome: 'O nome precisa ter de 2 a 14 letras.',
 };
@@ -143,9 +144,17 @@ async function boot() {
 
 async function enter({ look }) {
   FT.audio.init();
+  // celular: tenta tela cheia + travar na horizontal (Android). No iPhone aparece o aviso de girar.
+  if (coarse) {
+    try {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape').catch(() => {});
+    } catch (e) { /* ok */ }
+  }
   const btn = $('btn-enter'); btn.disabled = true; btn.textContent = 'ENTRANDO…'; $('enter-error').textContent = '';
   const r = await api.join({ pid: acct.pid, token: acct.token, look });
-  btn.disabled = false; btn.textContent = 'ENTRAR NO BUTECO 🍺';
+  btn.disabled = false; btn.innerHTML = 'ENTRAR NO BUTECO ' + ic('beer');
   if (!r) { $('enter-error').textContent = 'Sem conexão com o servidor. Tente de novo.'; return; }
   if (r.error === 401) { clearAcct(); acct = null; showHome('Sua sessão expirou. Entre de novo.'); return; }
   if (r.error || !r.pid) { $('enter-error').textContent = 'Não consegui entrar agora. Tente de novo.'; return; }
@@ -188,6 +197,7 @@ function autoTune(dt) {
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now; t += dt;
+  if (document.body.dataset.mode !== mode) document.body.dataset.mode = mode;
   if (mode === 'game') { game.update(dt, t); autoTune(dt); }
   else { wardrobe.update(dt, t); post.setEffects(t, 0, 0, 0); if (mode === 'home') wardrobe.orbit(t); }
   post.render(dt);

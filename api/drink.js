@@ -16,6 +16,7 @@ export default async function handler(req, res) {
     const reply = async (ok, reason) => send(res, 200, { ok, reason, ...(await stateOf(sql, me.pid)) });
 
     switch (body.action) {
+      case 'grab': // cerveja grátis deixada nas mesas
       case 'order':
         if (me.bottle || me.glass) return reply(false, me.glass ? 'copo-cheio' : 'ja-tem-garrafa');
         await sql`update players set bottle = 1, last_seen = now() where pid = ${me.pid}`;

@@ -280,3 +280,55 @@ button, .opt { touch-action: manipulation; }
   .tabs button { padding: 4px 2px; } .tabs button i { display: none; }
   .sec h3 { margin-bottom: 3px; }
 }
+
+/* ---------- ícones Lucide ---------- */
+#icons { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; stroke-width: 2.2; }
+.ic.big { width: 40px; height: 40px; color: var(--amber); filter: drop-shadow(0 0 8px #ffb43a88); }
+.round .ic { width: 21px; height: 21px; }
+.round.vape .ic, .round.drop .ic { width: 30px; height: 30px; }
+.round.off { opacity: .5; } .round.off::after { content: ''; position: absolute; width: 26px; height: 2px; background: #ff6a6a; transform: rotate(-45deg); }
+.round { position: relative; }
+.smoke .ic, .use .ic { width: 30px; height: 30px; }
+.tabs button .ic { width: 20px; height: 20px; }
+#toast div { display: flex; align-items: center; gap: 8px; }
+#toast div .ic { color: var(--amber); width: 20px; height: 20px; }
+#prompt { display: flex; align-items: center; gap: 8px; }
+#prompt .ic { color: #cbbcff; width: 20px; height: 20px; }
+#chatlog .sys .ic { width: 15px; height: 15px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #666; margin-right: 5px; vertical-align: 1px; }
+.dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.chip .ic { color: var(--amber); width: 13px; height: 13px; }
+#dlg-opts button .ic { width: 17px; height: 17px; color: var(--amber); }
+.modal-card h2 .ic { color: var(--amber); }
+.home-sub .ic { color: var(--amber); }
+.yt-head .ic { width: 14px; height: 14px; color: #cbbcff; }
+#rank-list .n .ic { width: 16px; height: 16px; }
+.primary .ic { width: 20px; height: 20px; }
+
+/* ---------- efeitos ---------- */
+.plus { position: fixed; left: 50%; top: 58%; transform: translate(-50%, 0); z-index: 20; pointer-events: none; display: flex; align-items: center; gap: 8px; color: var(--amber); font: 400 30px var(--logo); text-shadow: 0 0 14px #ffb43a99, 0 2px 0 #000; animation: plus 1.6s ease-out forwards; }
+.plus .ic { width: 34px; height: 34px; filter: drop-shadow(0 0 8px #ffb43a); }
+@keyframes plus { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 30% { transform: translate(-50%, -10px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -110px) scale(1); } }
+.confetti { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+#stars { position: fixed; left: 50%; top: 30%; width: 120px; height: 40px; margin-left: -60px; z-index: 6; pointer-events: none; animation: orbit 1.1s linear infinite; }
+#stars .ic { position: absolute; width: 28px; height: 28px; color: #ffe066; fill: #ffe06688; filter: drop-shadow(0 0 6px #ffe066); }
+#stars .ic:nth-child(1) { left: 0; top: 10px; } #stars .ic:nth-child(2) { left: 46px; top: -6px; } #stars .ic:nth-child(3) { left: 92px; top: 10px; }
+@keyframes orbit { 0% { transform: rotate(0) scaleY(.5); } 100% { transform: rotate(360deg) scaleY(.5); } }
+.modal-card, #dialog { animation: pop .22s ease-out; }
+@keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+#dialog { animation-name: popd; } @keyframes popd { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.primary, .ghost, .round, .opt, .tabs button, .seg button { transition: transform .12s, filter .12s, background .15s, border-color .15s; }
+.round:active, .ghost:active, .opt:active { transform: scale(.94); }
+.drink.on { box-shadow: 0 0 34px #ffb43aaa, 0 6px 14px #0009; }
+
+/* ---------- celular: jogar na horizontal ---------- */
+#rotate { display: none; position: fixed; inset: 0; z-index: 60; background: radial-gradient(circle at center, #2a1810, #0a0710 75%); color: var(--text); flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; }
+#rotate b { font: 400 26px var(--logo); color: #ffe3ef; text-shadow: 0 0 10px var(--pink); }
+#rotate span { color: #d8c9b8; font-weight: 800; }
+.rot-ico { position: relative; width: 90px; height: 90px; color: var(--amber); }
+.rot-ico .ic { position: absolute; inset: 0; width: 90px; height: 90px; }
+.rot-ico .ic:first-child { animation: tilt 2s ease-in-out infinite; }
+.rot-ico .ic.spin { width: 40px; height: 40px; inset: auto -18px -10px auto; color: var(--pink); }
+@keyframes tilt { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+@media (pointer: coarse) and (orientation: portrait) { body[data-mode="game"] #rotate { display: flex; } }

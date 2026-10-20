@@ -32,6 +32,48 @@ function sample(c, x, y) {
   return `rgb(${d[0]},${d[1]},${d[2]})`;
 }
 const nt = (c) => toTex(c, { nearest: true });
+
+// ---------- texturas de roupa em alta resolução ----------
+// Amplia o pixel art 8x e desenha a trama do tecido por cima (camisa = trama, jeans = sarja diagonal,
+// couro = brilho), mantendo a pele lisa. Fica bem mais rico de perto, sem perder o estilo.
+function rgbOf(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function enhance(src, skinHex, kind) {
+  const K = 8, w = src.width, h = src.height;
+  const out = document.createElement('canvas'); out.width = w * K; out.height = h * K;
+  const g = out.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0, w * K, h * K);
+  const d = src.getContext('2d').getImageData(0, 0, w, h).data;
+  const sk = rgbOf(skinHex);
+  const isSkin = (i) => Math.abs(d[i] - sk[0]) + Math.abs(d[i + 1] - sk[1]) + Math.abs(d[i + 2] - sk[2]) < 70;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] < 10) continue;
+    const X = x * K, Y = y * K;
+    if (isSkin(i)) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(X, Y, K, 2); continue; }
+    const blue = d[i + 2] > d[i] + 25 && d[i + 2] > d[i + 1];
+    if (kind === 'pants' && blue) { // sarja do jeans
+      for (let k = -K; k < K; k += 3) { g.fillStyle = 'rgba(255,255,255,.10)'; g.fillRect(X + ((k + Y) % K + K) % K, Y + (k + K) % K, 1, 1); }
+      for (let yy = 0; yy < K; yy++) { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(X + ((yy * 2) % K), Y + yy, 2, 1); g.fillStyle = 'rgba(0,0,10,.08)'; g.fillRect(X + ((yy * 2 + 4) % K), Y + yy, 2, 1); }
+    } else if (kind === 'shoes') {
+      g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(X + 1, Y + 1, 3, 1);
+    } else { // trama de tecido
+      for (let yy = 0; yy < K; yy += 2) { g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(X, Y + yy, K, 1); }
+      for (let xx = 1; xx < K; xx += 2) { g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(X + xx, Y, 1, K); }
+    }
+  }
+  // sombreado suave (luz de cima) e ruído fino
+  const gr = g.createLinearGradient(0, 0, 0, h * K);
+  gr.addColorStop(0, 'rgba(255,255,255,.08)'); gr.addColorStop(0.5, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.16)');
+  g.fillStyle = gr; g.fillRect(0, 0, w * K, h * K);
+  for (let n = 0; n < w * h * 3; n++) { g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.05)'; g.fillRect(Math.random() * w * K, Math.random() * h * K, 1, 1); }
+  return out;
+}
+function hiTex(c) {
+  const t = toTex(c, { aniso: 8 });
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
+  return t;
+}
 const lam = (opts) => new THREE.MeshLambertMaterial(opts);
 
 function sideHead(skin, hair, hairId, rows) {
@@ -59,8 +101,15 @@ export function makeMug() {
   const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.03, 16), new THREE.MeshStandardMaterial({ color: 0xfff6dc, roughness: 0.9, emissive: 0x222018, emissiveIntensity: 0.12 }));
   const handle = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 8, 14, Math.PI), new THREE.MeshStandardMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.4, roughness: 0.1 }));
   handle.rotation.z = -Math.PI / 2; handle.position.set(0.05, 0, 0);
+  const bubbles = [];
+  const bubMat = new THREE.MeshBasicMaterial({ color: 0xfff3c0, transparent: true, opacity: 0.75 });
+  for (let i = 0; i < 9; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.0035 + Math.random() * 0.003, 6, 4), bubMat);
+    b.userData = { a: Math.random() * 6.28, r: Math.random() * 0.03, sp: 0.03 + Math.random() * 0.05, y: Math.random() };
+    bubbles.push(b); g.add(b);
+  }
   g.add(glass, base, liquid, foam, handle);
-  g.userData = { liquid, foam, setLevel(v) { liquid.scale.y = Math.max(0.001, v); liquid.visible = v > 0.01; foam.position.y = -0.058 + 0.115 * v + 0.012; foam.visible = v > 0.04; } };
+  g.userData = { liquid, foam, bubbles, level: 1, tickBubbles(dt) { const lv = this.level; bubbles.forEach((b) => { const u = b.userData; u.y += dt * u.sp / Math.max(0.05, lv * 0.115); if (u.y > 1) u.y = 0; b.visible = lv > 0.06; b.position.set(Math.cos(u.a) * u.r, -0.055 + u.y * lv * 0.112, Math.sin(u.a) * u.r); }); }, setLevel(v) { this.level = v; liquid.scale.y = Math.max(0.001, v); liquid.visible = v > 0.01; foam.position.y = -0.058 + 0.115 * v + 0.012; foam.visible = v > 0.04; } };
   g.userData.setLevel(1);
   return g;
 }
@@ -185,10 +234,12 @@ export function createAvatar(lookIn, opts = {}) {
     disposables = [];
   }
 
-  function mkMat(canvasOrColor) {
+  function mkMat(canvasOrColor, kind) {
     if (typeof canvasOrColor === 'string') return track(lam({ color: canvasOrColor }));
+    if (kind) return track(new THREE.MeshStandardMaterial({ map: track(hiTex(enhance(canvasOrColor, skinHexNow, kind))), roughness: kind === 'shoes' ? 0.45 : 0.85 }));
     return track(lam({ map: track(nt(canvasOrColor)) }));
   }
+  let skinHexNow = '#e5b184';
 
   function build(lk) {
     clear();
@@ -197,6 +248,7 @@ export function createAvatar(lookIn, opts = {}) {
     const down = S.get(bare, { dir: 'down' });
     const up = S.get(bare, { dir: 'up' });
     const skinC = (S.SKINS.find((s) => s.id === look.skin) || S.SKINS[1]).c;
+    skinHexNow = skinC;
     const hairC = (S.HAIRCOLORS.find((s) => s.id === look.hairColor) || S.HAIRCOLORS[0]).c;
     const hairId = look.hair;
 
@@ -236,7 +288,7 @@ export function createAvatar(lookIn, opts = {}) {
     model.add(neck);
 
     // tronco (camisa + cós da calça)
-    const torsoMats = [mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(torsoF), mkMat(torsoB)];
+    const torsoMats = [mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(torsoF, 'shirt'), mkMat(torsoB, 'shirt')];
     const torso = new THREE.Mesh(track(rbox(TORSO_W, TORSO_H, TORSO_D)), torsoMats);
     torso.position.y = LEG_H + TORSO_H / 2; torso.castShadow = true;
     model.add(torso);
@@ -259,7 +311,7 @@ export function createAvatar(lookIn, opts = {}) {
     // braços
     const mkArm = (x0, sx) => {
       const ac = crop(down, x0, 28, 5, 21);
-      const am = mkMat(ac);
+      const am = mkMat(ac, 'shirt');
       const geo = track(rbox(ARM_W, ARM_L, ARM_W));
       geo.translate(0, -ARM_L / 2, 0);
       const arm = new THREE.Mesh(geo, [am, am, mkMat(shirtC), mkMat(skinC), am, am]);
@@ -286,7 +338,7 @@ export function createAvatar(lookIn, opts = {}) {
     const mkLeg = (x0, sx) => {
       const lc = crop(down, x0, 51, 8, 13);
       const lb = crop(up, x0, 51, 8, 13);
-      const lm = mkMat(lc), bm = mkMat(lb);
+      const lm = mkMat(lc, 'pants'), bm = mkMat(lb, 'pants');
       const sideCol = sample(lc, 0, 3);
       const geo = track(rbox(LEG_W, LEG_H, 0.22));
       geo.translate(0, -LEG_H / 2, 0);

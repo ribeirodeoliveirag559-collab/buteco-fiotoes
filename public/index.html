@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0a0710">
   <title>Buteco FIOTÕES</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🍺%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
@@ -15,6 +15,8 @@
   </script>
 </head>
 <body>
+<div id="icons" aria-hidden="true"></div>
+<script>fetch("icons.svg").then(function (r) { return r.text(); }).then(function (t) { document.getElementById("icons").innerHTML = t; });</script>
 <canvas id="gl"></canvas>
 
 <div id="loading"><div class="neon">FIOTÕES</div><p>acendendo as luzes…</p></div>
@@ -24,11 +26,11 @@
   <div class="home-wrap">
     <div class="home-card">
       <h1 class="neon">BUTECO FIOTÕES</h1>
-      <p class="home-sub">O bar do torneio de cerveja 🍺</p>
+      <p class="home-sub"><svg class="ic " aria-hidden="true"><use href="#i-beer"></use></svg> O bar do torneio de cerveja</p>
 
       <div id="home-continue" hidden>
         <p class="home-hello">Bem-vindo de volta,<br><b id="home-name"></b>!</p>
-        <button id="btn-continue" class="primary">CONTINUAR 🍺</button>
+        <button id="btn-continue" class="primary">CONTINUAR <svg class="ic " aria-hidden="true"><use href="#i-beer"></use></svg></button>
         <button id="btn-switch" class="linkbtn">Entrar com outra conta</button>
       </div>
 
@@ -43,7 +45,7 @@
         <label class="fld"><span>Senha</span>
           <span class="pw">
             <input id="auth-pass" type="password" maxlength="40" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="mínimo 3 caracteres">
-            <button type="button" id="auth-eye" aria-label="Mostrar senha">👁</button>
+            <button type="button" id="auth-eye" aria-label="Mostrar senha"><svg class="ic " aria-hidden="true"><use href="#i-eye"></use></svg></button>
           </span>
         </label>
         <button type="button" id="btn-auth" class="primary">ENTRAR</button>
@@ -51,7 +53,7 @@
         <div id="auth-error" class="auth-error"></div>
       </form>
 
-      <p class="fine small">Jogo para maiores de 18 anos. Beba com moderação, na vida real também. 🍻</p>
+      <p class="fine small">Jogo para maiores de 18 anos. Beba com moderação, na vida real também.</p>
     </div>
   </div>
 </section>
@@ -63,7 +65,7 @@
     <p>Antes de entrar, escolha o visual no guarda-roupa</p>
   </header>
 
-  <button id="drawer-toggle" class="drawer-toggle">👕 Roupas</button>
+  <button id="drawer-toggle" class="drawer-toggle"><svg class="ic " aria-hidden="true"><use href="#i-shirt"></use></svg> Roupas</button>
   <aside id="drawer" class="open">
     <div class="drawer-head" id="drawer-head">GUARDA-ROUPA</div>
     <label class="name-field">
@@ -79,10 +81,10 @@
       <button data-pose="joint">Fumando</button>
     </div>
     <div class="row">
-      <button id="btn-spin" class="ghost">🔄 Virar</button>
-      <button id="btn-random" class="ghost">🎲 Aleatório</button>
+      <button id="btn-spin" class="ghost"><svg class="ic " aria-hidden="true"><use href="#i-rotate-ccw"></use></svg> Virar</button>
+      <button id="btn-random" class="ghost"><svg class="ic " aria-hidden="true"><use href="#i-dices"></use></svg> Aleatório</button>
     </div>
-    <button id="btn-enter" class="primary" disabled>ENTRAR NO BUTECO 🍺</button>
+    <button id="btn-enter" class="primary" disabled>ENTRAR NO BUTECO <svg class="ic " aria-hidden="true"><use href="#i-beer"></use></svg></button>
     <div id="enter-error" class="fine"></div>
     <button id="btn-logout" class="linkbtn" type="button">Sair da conta</button>
   </aside>
@@ -98,39 +100,39 @@
   <div id="hud">
     <div class="hud-tl">
       <span class="mini-logo">FIOTÕES</span>
-      <span id="online" class="pill">👥 1</span>
+      <span id="online" class="pill"><svg class="ic " aria-hidden="true"><use href="#i-users"></use></svg> 1</span>
       <span id="netmode" class="pill dim"></span>
     </div>
 
     <div class="hud-tr">
-      <button id="btn-board" class="round" title="Placar (Tab)">🏆</button>
-      <button id="btn-chat" class="round touch-only" title="Conversar">💬</button>
-      <button id="btn-music" class="round" title="Música da jukebox">🎵</button>
-      <button id="btn-sound" class="round" title="Efeitos sonoros">🔊</button>
-      <button id="btn-edit" class="round" title="Voltar ao guarda-roupa">👕</button>
+      <button id="btn-board" class="round" title="Placar (Tab)"><svg class="ic " aria-hidden="true"><use href="#i-trophy"></use></svg></button>
+      <button id="btn-chat" class="round touch-only" title="Conversar"><svg class="ic " aria-hidden="true"><use href="#i-message-circle"></use></svg></button>
+      <button id="btn-music" class="round" title="Música da jukebox"><svg class="ic " aria-hidden="true"><use href="#i-music"></use></svg></button>
+      <button id="btn-sound" class="round" title="Efeitos sonoros"><svg class="ic " aria-hidden="true"><use href="#i-volume-2"></use></svg></button>
+      <button id="btn-edit" class="round" title="Voltar ao guarda-roupa"><svg class="ic " aria-hidden="true"><use href="#i-shirt"></use></svg></button>
     </div>
 
     <div id="status" class="status">
       <div class="beer-count"><span id="beer-n">0</span><small>copos hoje</small></div>
-      <div class="chips"><span class="chip">⭐ <b id="pts-n">0</b> pts</span><span class="chip" id="vape-chip" hidden>💨 <b id="vape-n">0</b></span></div>
+      <div class="chips"><span class="chip"><svg class="ic " aria-hidden="true"><use href="#i-star"></use></svg> <b id="pts-n">0</b> pts</span><span class="chip" id="vape-chip" hidden><svg class="ic " aria-hidden="true"><use href="#i-wind"></use></svg> <b id="vape-n">0</b></span></div>
       <div class="level"><div id="level-label">Sóbrio</div><div class="bar"><i id="level-bar"></i></div></div>
     </div>
 
     <div id="chatlog"></div>
     <form id="chatform" autocomplete="off">
       <input id="chatinput" maxlength="80" placeholder="Fale no bar… (Enter)" autocomplete="off">
-      <button type="submit">➤</button>
+      <button type="submit" aria-label="Enviar"><svg class="ic " aria-hidden="true"><use href="#i-send"></use></svg></button>
     </form>
 
     <div id="joy" class="touch-only"><div id="joy-knob"></div></div>
 
     <div class="actions">
-      <button id="btn-drop" class="round drop" title="Largar a garrafa (G)" hidden>🍾</button>
-      <button id="btn-vape" class="round vape" title="Cigarro eletrônico (F)" hidden>💨</button>
-      <button id="btn-use" class="use" hidden>✋<span>FALAR</span></button>
-      <button id="btn-smoke" class="smoke" hidden>🚬<span>FUMAR</span></button>
+      <button id="btn-drop" class="round drop" title="Largar a garrafa (G)" hidden><svg class="ic " aria-hidden="true"><use href="#i-bottle-wine"></use></svg></button>
+      <button id="btn-vape" class="round vape" title="Cigarro eletrônico (F)" hidden><svg class="ic " aria-hidden="true"><use href="#i-wind"></use></svg></button>
+      <button id="btn-use" class="use" hidden><svg class="ic " aria-hidden="true"><use href="#i-hand"></use></svg><span>FALAR</span></button>
+      <button id="btn-smoke" class="smoke" hidden><svg class="ic " aria-hidden="true"><use href="#i-cigarette"></use></svg><span>FUMAR</span></button>
       <button id="btn-drink" class="drink" style="--p:0">
-        <b>🍺</b><span>SEGURE<br>PRA BEBER</span>
+        <b><svg class="ic big" aria-hidden="true"><use href="#i-beer"></use></svg></b><span>SEGURE<br>PRA BEBER</span>
       </button>
     </div>
 
@@ -149,21 +151,29 @@
   </div>
 
   <div id="ytbox" hidden>
-    <div class="yt-head"><span id="yt-title">🎵</span><button id="yt-hide" title="Minimizar">▁</button></div>
+    <div class="yt-head"><svg class="ic " aria-hidden="true"><use href="#i-music"></use></svg><span id="yt-title"></span><button id="yt-hide" title="Minimizar"><svg class="ic " aria-hidden="true"><use href="#i-minimize-2"></use></svg></button></div>
     <div class="yt-frame"><div id="yt-player"></div></div>
   </div>
 
   <div id="jukebox" class="modal" hidden>
     <div class="modal-card">
-      <h2>🎵 Jukebox do Buteco</h2>
+      <h2><svg class="ic " aria-hidden="true"><use href="#i-music"></use></svg> Jukebox do Buteco</h2>
       <p class="fine" style="margin-top:0">Cole o link de uma música do YouTube. Toca pra todo mundo que está no bar; quanto mais perto da jukebox (ou dentro do camarote), mais alto.</p>
       <input id="jb-url" class="jb-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
       <div class="jb-row">
-        <button id="jb-play" class="primary small">▶ Tocar pra todos</button>
-        <button id="jb-stop" class="ghost">⏹ Parar</button>
+        <button id="jb-play" class="primary small"><svg class="ic " aria-hidden="true"><use href="#i-play"></use></svg> Tocar pra todos</button>
+        <button id="jb-stop" class="ghost"><svg class="ic " aria-hidden="true"><use href="#i-square"></use></svg> Parar</button>
         <button id="jb-close" class="ghost">Fechar</button>
       </div>
     </div>
+  </div>
+
+  <div id="stars" hidden><svg class="ic " aria-hidden="true"><use href="#i-star"></use></svg><svg class="ic " aria-hidden="true"><use href="#i-star"></use></svg><svg class="ic " aria-hidden="true"><use href="#i-star"></use></svg></div>
+
+  <div id="rotate">
+    <div class="rot-ico"><svg class="ic " aria-hidden="true"><use href="#i-smartphone"></use></svg><svg class="ic spin" aria-hidden="true"><use href="#i-rotate-cw"></use></svg></div>
+    <b>Gire o celular</b>
+    <span>O buteco é melhor na horizontal</span>
   </div>
 
   <div id="pause" hidden>
@@ -176,7 +186,7 @@
 
   <div id="ranking" class="modal" hidden>
     <div class="modal-card">
-      <h2>🏆 Placar de hoje</h2>
+      <h2><svg class="ic " aria-hidden="true"><use href="#i-trophy"></use></svg> Placar de hoje</h2>
       <ol id="rank-list"></ol>
       <p class="fine">Zera à meia-noite. O servidor confere o tempo de cada cerveja.</p>
       <button id="rank-close" class="primary small">Fechar</button>

@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 const CROPS = { head: [4, 0, 32, 30], torso: [2, 26, 36, 24], legs: [6, 44, 28, 22], feet: [8, 52, 24, 14] };
 const TABS = [
   {
-    id: 'corpo', label: 'CORPO', icon: '🧍', sections: [
+    id: 'corpo', label: 'CORPO', icon: 'user', sections: [
       { key: 'hair', label: 'Cabelo', list: S.HAIRS, crop: 'head', noHat: true },
       { key: 'hairColor', label: 'Cor do cabelo', list: S.HAIRCOLORS, swatch: true },
       { key: 'eyes', label: 'Olhos', list: S.EYES, crop: 'head', noHat: true },
@@ -15,14 +15,14 @@ const TABS = [
     ],
   },
   {
-    id: 'roupa', label: 'ROUPA', icon: '👕', sections: [
+    id: 'roupa', label: 'ROUPA', icon: 'shirt', sections: [
       { key: 'shirt', label: 'Camisa', list: S.SHIRTS, crop: 'torso' },
       { key: 'pants', label: 'Calça / Bermuda', list: S.PANTS, crop: 'legs' },
       { key: 'shoes', label: 'Calçado', list: S.SHOES, crop: 'feet' },
     ],
   },
   {
-    id: 'acess', label: 'ACESSÓRIOS', icon: '🤠', sections: [
+    id: 'acess', label: 'ACESSÓRIOS', icon: 'glasses', sections: [
       { key: 'hat', label: 'Chapéu / Boné', list: S.HATS, crop: 'head' },
       { key: 'glasses', label: 'Óculos', list: S.GLASSES, crop: 'head', noHat: true },
     ],
@@ -40,7 +40,7 @@ export function initWardrobeUI(h) {
     const nav = $('tabs'); nav.innerHTML = '';
     for (const t of TABS) {
       const b = document.createElement('button');
-      b.innerHTML = `<i>${t.icon}</i>${t.label}`;
+      b.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-${t.icon}"></use></svg>${t.label}`;
       b.className = t.id === tab ? 'on' : '';
       b.onclick = () => { tab = t.id; buildTabs(); buildPanel(); };
       nav.appendChild(b);

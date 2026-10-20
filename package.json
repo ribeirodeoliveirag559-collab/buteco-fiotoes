@@ -12,6 +12,7 @@
     "@neondatabase/serverless": "^1.0.0"
   },
   "devDependencies": {
+    "lucide-static": "^1.59.0",
     "three": "0.160.1"
   }
 }

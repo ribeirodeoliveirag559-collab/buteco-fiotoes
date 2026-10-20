@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { rbox } from './shapes.js';
 import * as TX from './textures.js';
 import { createAvatar, makeMug, makeBottle } from './avatar.js';
+import { drawIcon } from './ui-icons.js';
 
 const FT = window.FT;
 
@@ -51,16 +52,16 @@ export function createBar(quality = 'high') {
   const ceilTex = TX.toTex(TX.woodDark([20, 30, 11], 21), { repeat: [6, 4] });
 
   // ---------------- piso, paredes, teto ----------------
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 14), M(floorTex, { roughness: 0.6 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 14), M(floorTex, { roughness: 0.55, bumpMap: floorTex, bumpScale: 1.2 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; root.add(floor);
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 14), M(ceilTex));
   ceil.rotation.x = Math.PI / 2; ceil.position.y = 3.5; root.add(ceil);
 
   const wall = (w, x, z, ry, brickT, panelT) => {
     const g = new THREE.Group();
-    const up = new THREE.Mesh(new THREE.PlaneGeometry(w, 2.3), M(brickT));
+    const up = new THREE.Mesh(new THREE.PlaneGeometry(w, 2.3), M(brickT, { bumpMap: brickT, bumpScale: 2.5 }));
     up.position.y = 1.15 + 1.2; g.add(up);
-    const lo = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.2), M(panelT));
+    const lo = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.2), M(panelT, { bumpMap: panelT, bumpScale: 1.5 }));
     lo.position.y = 0.6; lo.receiveShadow = true; g.add(lo);
     const rail = new THREE.Mesh(rbox(w, 0.08, 0.1), M(woodTex));
     rail.position.set(0, 1.22, 0.04); g.add(rail);
@@ -212,7 +213,7 @@ export function createBar(quality = 'high') {
     g.textBaseline = 'middle';
     if (!rows.length) {
       g.fillStyle = '#5a4020'; g.font = '800 44px Nunito, sans-serif';
-      g.fillText('Ninguém bebeu ainda…', 512, 270); g.fillText('seja o primeiro! 🍺', 512, 340);
+      g.fillText('Ninguém bebeu ainda…', 512, 270); g.fillText('seja o primeiro!', 512, 340); drawIcon(g, 'beer', 490, 365, 44, '#7a1c1c', 2.2);
     }
     rows.slice(0, 6).forEach((r, i) => {
       const y = 184 + i * 43;
@@ -226,12 +227,16 @@ export function createBar(quality = 'high') {
       if (r.online) { g.fillStyle = '#2aa84a'; g.beginPath(); g.arc(640, y, 9, 0, 7); g.fill(); }
       g.textAlign = 'right'; g.fillStyle = '#7a1c1c'; g.font = '66px Nunito';
       g.font = '900 42px Bungee, Impact, sans-serif';
-      g.fillText(`${r.beers} 🍺`, 950, y);
+      g.fillText(String(r.beers), 900, y);
+      drawIcon(g, 'beer', 910, y - 20, 40, '#7a1c1c', 2.4);
     });
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#5a4020'; g.font = '800 23px Nunito, sans-serif';
-    g.fillText('⭐ TOP 5 entra no CAMAROTE · campeão do dia ganha um vape 💨', 512, 428);
-    if (lastWinner) { g.fillStyle = '#7a1c1c'; g.font = '900 26px Nunito, sans-serif'; g.fillText('🏆 Campeão de ' + lastWinner.day + ': ' + lastWinner.name + ' (' + lastWinner.beers + ' copos)', 512, 456); }
+    const foot = 'TOP 5 entra no CAMAROTE · campeão do dia ganha um vape';
+    const fw = g.measureText(foot).width;
+    g.fillText(foot, 512, 428);
+    drawIcon(g, 'star', 512 - fw / 2 - 34, 415, 26, '#b8860b', 2.4); drawIcon(g, 'wind', 512 + fw / 2 + 8, 415, 26, '#5a4020', 2.4);
+    if (lastWinner) { g.fillStyle = '#7a1c1c'; g.font = '900 26px Nunito, sans-serif'; const wt = 'Campeão de ' + lastWinner.day + ': ' + lastWinner.name + ' (' + lastWinner.beers + ' copos)'; g.fillText(wt, 512, 456); drawIcon(g, 'trophy', 512 - g.measureText(wt).width / 2 - 36, 442, 28, '#b8860b', 2.4); }
     if (mode === 'offline') { g.fillStyle = 'rgba(90,64,32,.7)'; g.font = '700 20px Nunito'; g.fillText('(placar local — sem conexão com o servidor)', 512, 150); }
     pTex.needsUpdate = true;
   }
@@ -354,6 +359,19 @@ export function createBar(quality = 'high') {
     root.remove(b); const i = bottles.indexOf(b); if (i >= 0) bottles.splice(i, 1);
   }
 
+  // ================= CERVEJAS GRÁTIS NAS MESAS =================
+  const freeBottles = [];
+  tables.forEach(([x, z], i) => {
+    const n = 1 + (i % 2);
+    for (let k = 0; k < n; k++) {
+      const a = i * 1.3 + k * 2.4 + 0.9;
+      const b = makeBottle(); b.position.set(x + Math.cos(a) * 0.38, 0.805, z + Math.sin(a) * 0.38);
+      b.userData.free = true; b.userData.fid = freeBottles.length;
+      root.add(b); freeBottles.push({ mesh: b, id: freeBottles.length, back: 0 });
+    }
+  });
+  function takeFree(id) { const fb = freeBottles[id]; if (!fb || !fb.mesh.visible) return false; fb.mesh.visible = false; fb.back = performance.now() + 75000; return true; }
+
   // ================= CAMAROTE (só top 5) =================
   const VX0 = 10.4, VX1 = 18, VZ = 6;
   const vip = new THREE.Group(); root.add(vip);
@@ -452,6 +470,12 @@ export function createBar(quality = 'high') {
   function setVipOpen(open) { vipBlock.off = !!open; rope.visible = !open; }
   const inVip = (p) => p.x > 10.3;
 
+  // notas musicais (quando tem música tocando)
+  const noteTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; drawIcon(c.getContext('2d'), 'music', 8, 8, 48, '#ffffff', 2.6); return new THREE.CanvasTexture(c); })();
+  const notes = [];
+  for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { t: i / 8 }; sp.scale.setScalar(0.22); root.add(sp); notes.push(sp); }
+  let musicOn = false;
+
   // ---------------- colisão ----------------
   function collide(p, r = 0.3) {
     const H = BAR.half;
@@ -508,6 +532,16 @@ export function createBar(quality = 'high') {
     woofers.forEach((w) => w.scale.set(1, 1 + beat * 0.25, 1 + beat * 0.25));
     vipNeonMat.color.setScalar(1.7 + 0.4 * Math.sin(t * 3));
     dancers.forEach((d) => d.update(dt));
+    // cervejas grátis voltam pra mesa depois de um tempo
+    const nowMs = performance.now();
+    freeBottles.forEach((fb) => { if (!fb.mesh.visible && nowMs > fb.back) { fb.mesh.visible = true; fb.mesh.scale.setScalar(0.001); fb.mesh.userData.spawnT = 0; bottles.push(fb.mesh); } });
+    for (const b of bottles) { if (b.userData.free && b.userData.spawnT >= 1) { const i = bottles.indexOf(b); if (i >= 0) bottles.splice(i, 1); } }
+    notes.forEach((n, i) => {
+      const u = n.userData; u.t = (u.t + dt * 0.35) % 1;
+      n.position.set(9.0 + Math.sin(u.t * 6 + i) * 0.25, 1.9 + u.t * 1.3, -3.2 + Math.cos(u.t * 5 + i) * 0.3);
+      n.material.opacity = musicOn ? Math.sin(u.t * Math.PI) * 0.9 : 0;
+      n.material.color.setHSL((u.t + i * 0.13) % 1, 0.9, 0.65);
+    });
     const f = Math.sin(t * 2.1) > 0.995 || Math.floor(t * 11) % 53 === 0 ? 0.35 : 1;
     flick += (f - flick) * Math.min(1, dt * 30);
     neonMat.color.setScalar((0.75 + 0.25 * flick) * 2.3);
@@ -531,5 +565,5 @@ export function createBar(quality = 'high') {
     lampSpots.forEach((s, i) => { s.castShadow = on && i < 5; });
   }
 
-  return { scene, colliders, collide, update, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, placeBottle, takeBottle, bottles, surfaces, setVipOpen, inVip };
+  return { scene, colliders, collide, update, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, placeBottle, takeBottle, bottles, surfaces, setVipOpen, inVip, freeBottles, takeFree, setMusicOn(v) { musicOn = v; } };
 }

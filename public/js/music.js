@@ -47,8 +47,8 @@ export function createMusic({ toast }) {
     if (!track || !track.vid) return;
     cur = { vid: track.vid, t0: track.t0 || Date.now(), by: track.by || '' };
     const offset = Math.max(0, Math.min(60 * 60, (Date.now() - cur.t0) / 1000));
-    showBox(true); setTitle('🎵 carregando…');
-    try { await loadApi(); } catch (e) { toast('Não consegui carregar o player do YouTube 😕'); showBox(false); cur = null; return; }
+    showBox(true); setTitle('carregando…');
+    try { await loadApi(); } catch (e) { toast('Não consegui carregar o player do YouTube'); showBox(false); cur = null; return; }
     const startSeconds = Math.floor(offset);
     if (!player) {
       player = new window.YT.Player('yt-player', {
@@ -57,10 +57,10 @@ export function createMusic({ toast }) {
         events: {
           onReady: (e) => { e.target.setVolume(muted ? 0 : vol); e.target.playVideo(); },
           onStateChange: (e) => {
-            if (e.data === 1) { const d = e.target.getVideoData && e.target.getVideoData(); setTitle('🎵 ' + ((d && d.title) || 'tocando') + (cur && cur.by ? ' · pedida por ' + cur.by : '')); }
+            if (e.data === 1) { const d = e.target.getVideoData && e.target.getVideoData(); setTitle('' + ((d && d.title) || 'tocando') + (cur && cur.by ? ' · pedida por ' + cur.by : '')); }
             if (e.data === 0) { cur = null; showBox(false); }
           },
-          onError: () => { toast('Esse vídeo não pode ser tocado aqui. Tente outro link 🎶'); cur = null; showBox(false); },
+          onError: () => { toast('Esse vídeo não pode ser tocado aqui. Tente outro link'); cur = null; showBox(false); },
         },
       });
     } else {

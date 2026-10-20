@@ -176,7 +176,7 @@ async function enter({ look }) {
   const session = { pid: acct.pid, token: acct.token, name: acct.name, look, beers: r.beers, points: r.points, vape: r.vape, bottle: r.bottle, glass: r.glass, notice: r.notice, offline: false };
   await new Promise((res) => setTimeout(res, 30));
   if (!bar) { bar = createBar(quality, renderer); bar.scene.add(gameCam); }
-  if (!game) game = createGame({ bar, camera: gameCam, post, cfg, quality });
+  if (!game) game = createGame({ bar, camera: gameCam, post, cfg, quality, onWardrobe: backToWardrobe });
   post.setScene(bar.scene, gameCam);
   $('screen-wardrobe').hidden = true;
   mode = 'game';

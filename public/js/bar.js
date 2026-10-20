@@ -23,6 +23,7 @@ export const BAR = {
   wc: { x0: -14.2, x1: -10, z0: -3.3, z1: 1.9, doorZ: -0.6, doorW: 1.5 },
   toilets: [{ x: -13.75, z: -2.0 }, { x: -13.75, z: 0.6 }],
   sponsors: { x: -1.8, z: 6.9 }, // painel de patrocinadores na parede sul
+  provador: { x: 6.9, z: 6.05 }, // cabine pra trocar de roupa (parede sul, à direita da porta)
 };
 
 export function createBar(quality = 'high', renderer = null) {
@@ -608,6 +609,44 @@ export function createBar(quality = 'high', renderer = null) {
   const wcLight = new THREE.PointLight(0xfff0dc, 22, 11, 1.5); wcLight.position.set(wcCx, 2.9, wcCz); wcg.add(wcLight);
   const wcLight2 = new THREE.PointLight(0xe8f4ff, 8, 7, 2); wcLight2.position.set(WC.x0 + 1.0, 2.2, WC.z0 + 1.0); wcg.add(wcLight2);
   const inWC = (p) => p.x < WC.x1 - 0.2;
+
+  // ---------------- provador (trocar de roupa) ----------------
+  {
+    const PV = BAR.provador, W = 1.7, D = 1.25, Hh = 2.45;
+    const g = new THREE.Group(); g.position.set(PV.x, 0, PV.z); root.add(g);
+    const woodP = M(TX.toTex(TX.woodDark([26, 46, 30], 61)), { roughness: 0.6 });
+    const sideA = new THREE.Mesh(rbox(0.1, Hh, D), woodP); sideA.position.set(-W / 2, Hh / 2, 0.3 - D / 2 + 0.6); sideA.castShadow = sideA.receiveShadow = true; g.add(sideA);
+    const sideB = sideA.clone(); sideB.position.x = W / 2; g.add(sideB);
+    const top = new THREE.Mesh(rbox(W + 0.14, 0.18, D + 0.06), woodP); top.position.set(0, Hh + 0.09, 0.3 - D / 2 + 0.6); top.castShadow = true; g.add(top);
+    const floorP = new THREE.Mesh(rbox(W, 0.05, D), M(TX.toTex(TX.fabric('#5a1a2a')), { roughness: 1 })); floorP.position.set(0, 0.025, 0.3 - D / 2 + 0.6); floorP.receiveShadow = true; g.add(floorP);
+    // espelho no fundo
+    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.7), new THREE.MeshStandardMaterial({ color: 0xd8e8f4, roughness: 0.05, metalness: 1.0, envMapIntensity: 1.5 }));
+    mirror.position.set(0, 1.25, 0.9 - D / 2 + 0.29); mirror.rotation.y = Math.PI; g.add(mirror);
+    const mFrame = new THREE.Mesh(rbox(0.88, 1.84, 0.04), M(TX.toTex(TX.woodDark([38, 60, 40], 63)), { roughness: 0.4 })); mFrame.position.set(0, 1.25, 0.9 - D / 2 + 0.31); g.add(mFrame);
+    // cortina vermelha meio aberta (com dobras)
+    const cGeo = new THREE.PlaneGeometry(0.85, Hh - 0.15, 24, 1);
+    const cp = cGeo.attributes.position;
+    for (let i = 0; i < cp.count; i++) cp.setZ(i, Math.sin(cp.getX(i) * 26) * 0.05);
+    cGeo.computeVertexNormals();
+    const curtain = new THREE.Mesh(cGeo, new THREE.MeshStandardMaterial({ map: TX.toTex(TX.fabric('#a3122e')), color: 0xffffff, roughness: 0.9, side: THREE.DoubleSide }));
+    curtain.position.set(-W / 2 + 0.47, (Hh - 0.15) / 2 + 0.05, 0.3 - D + 0.6 + 0.02); curtain.castShadow = true; g.add(curtain);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, W, 8), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.3 }));
+    rod.rotation.z = Math.PI / 2; rod.position.set(0, Hh - 0.05, 0.3 - D + 0.6 + 0.02); g.add(rod);
+    // cabides com camisas penduradas na lateral
+    for (let i = 0; i < 3; i++) {
+      const sh = new THREE.Mesh(rbox(0.05, 0.5, 0.38), new THREE.MeshStandardMaterial({ color: [0xc0392b, 0x2f6fd0, 0x2e8b57][i], roughness: 0.85 }));
+      sh.position.set(W / 2 - 0.12, 1.55, 0.25 - i * 0.26); g.add(sh);
+    }
+    // banquinho
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.42, 14), M(TX.toTex(TX.fabric('#2a0f3a')))); st.position.set(0.35, 0.21, 0.35); st.castShadow = true; g.add(st);
+    // placa neon PROVADOR
+    const pvNeon = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.42), new THREE.MeshBasicMaterial({ map: TX.toTex(TX.neonSign([{ text: 'PROVADOR', y: 70, size: 92, color: '#ffd23a', glow: '#ff9a00', core: '#fff6d0' }], { w: 768, h: 140 })), transparent: true, toneMapped: false }));
+    pvNeon.position.set(0, Hh + 0.42, 0.3 - D + 0.6 - 0.02); pvNeon.material.color.setScalar(2); g.add(pvNeon);
+    const pvLight = new THREE.PointLight(0xffd59a, 7, 4, 2); pvLight.position.set(0, Hh - 0.3, 0.2); g.add(pvLight);
+    // colisão: só as laterais (dá pra entrar pela frente)
+    rect(PV.x - W / 2 - 0.08, PV.z - 0.4, PV.x - W / 2 + 0.08, PV.z + 0.95);
+    rect(PV.x + W / 2 - 0.08, PV.z - 0.4, PV.x + W / 2 + 0.08, PV.z + 0.95);
+  }
 
   // ---------------- colisão ----------------
   function collide(p, r = 0.3) {

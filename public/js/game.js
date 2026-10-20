@@ -28,7 +28,7 @@ const PEE_SECONDS = 4.8, PEE_RELIEF = 4, PEE_COOLDOWN_MS = 25000; // urinar baix
 const BOTTLE_SERVINGS = 5; // cada garrafa rende até 5 copos
 const MAX_BAC = 20; // a partir daqui o personagem cai e levanta sem parar até o nível baixar
 
-export function createGame({ bar, camera, post, cfg, quality }) {
+export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
   const sid = uid();
   let me = null, running = false, session = null;
   const players = new Map();
@@ -106,19 +106,19 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     c.renderOrder = 61; c.userData = { t: -1 }; camera.add(c); fpClouds.push(c);
   }
   const worldPuffs = [];
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 140; i++) {
     const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0, color: 0xf2f8ff }));
     c.userData = { t: -1 }; bar.scene.add(c); worldPuffs.push(c);
   }
   function emitWorldSmoke(x, y, z, n, big) {
     for (let i = 0; i < n; i++) {
-      const c = worldPuffs.find((q) => q.userData.t < 0); if (!c) return;
-      c.userData = { t: 0, life: rnd(3.5, 6), vx: rnd(-0.45, 0.45) + (big ? Math.sin(i) * 0.3 : 0), vy: rnd(0.12, 0.4), vz: rnd(-0.45, 0.45), s0: big ? 0.3 : 0.15, s1: big ? rnd(1.6, 2.8) : 0.8 };
+      const c = worldPuffs.find((q) => !q.userData.life); if (!c) return;
+      c.userData = { t: -(big ? i * 0.025 : 0), life: big ? rnd(6, 9) : rnd(3.5, 6), vx: rnd(-0.5, 0.5) + (big ? Math.sin(i) * 0.35 : 0), vy: rnd(0.1, 0.35), vz: rnd(-0.5, 0.5), s0: big ? 0.35 : 0.15, s1: big ? rnd(2.4, 4.2) : 0.8 };
       c.position.set(x + rnd(-0.1, 0.1), y, z + rnd(-0.1, 0.1));
     }
   }
-  function emitBigCloud() {
-    for (let i = 0; i < fpClouds.length; i++) {
+  function emitBigCloud(amount = 1) {
+    for (let i = 0; i < Math.round(fpClouds.length * amount); i++) {
       const c = fpClouds[i];
       c.userData = { t: -rnd(0, 0.7), life: rnd(4.5, 6.5), x: rnd(-0.55, 0.55), y: rnd(-0.3, 0.4), z: -rnd(0.45, 1.1), dx: rnd(-0.06, 0.06), dy: rnd(0.02, 0.1), s1: rnd(1.6, 3.2) };
     }
@@ -607,6 +607,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     test('maid', BAR.maidPos, 3.4, 0.7);
     test('man', BAR.npcPos, 3.4, 0.75);
     test('jukebox', BAR.jukebox, 2.8, 0.5);
+    test('provador', BAR.provador, 3.0, 0.6);
     test('sponsors', BAR.sponsors, 4.2, 0.72);
     for (const T of BAR.toilets) { const i = viewInfo(T.x, T.z, 2.2, 0.62); if (i.ok && (!best || i.d < best.d)) best = { type: 'toilet', d: i.d, T }; }
     if (!best) { const i = viewInfo(BAR.vipDoor.x - 0.6, BAR.vipDoor.z, 3.4, 0.6); if (i.ok && !vipAllowed) best = { type: 'vip', d: i.d }; }
@@ -620,6 +621,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (tg && tg.type === 'maid' && !dialogOpen()) return talkMaid();
     if (tg && tg.type === 'man' && !dialogOpen()) return talkHomem();
     if (tg && tg.type === 'jukebox') return openJukebox();
+    if (tg && tg.type === 'provador') { if (onWardrobe) onWardrobe(); return; }
     if (tg && tg.type === 'sponsors') return FT.openSponsors && FT.openSponsors();
     if (tg && tg.type === 'toilet') return usePee(tg.T);
     if (canPour()) return pourBeer();
@@ -630,6 +632,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     maid: () => [ 'heart', isTouch ? 'Toque em FALAR com a Bella' : 'E — falar com a Bella' ],
     man: () => [ 'hand', isTouch ? 'Toque em FALAR' : 'E — falar com o homem' ],
     jukebox: () => [ 'music', isTouch ? 'Toque em MÚSICA' : 'E — pedir música' ],
+    provador: () => [ 'shirt', isTouch ? 'Toque em TROCAR de roupa' : 'E — entrar no provador e trocar de roupa' ],
     sponsors: () => [ 'hand-heart', isTouch ? 'Toque em VER os patrocinadores' : 'E — ver os patrocinadores' ],
     toilet: () => [ 'droplets', isTouch ? 'Toque em URINAR' : 'E — urinar no vaso (baixa a embriaguez)' ],
     freebeer: () => [ 'beer', isTouch ? 'Toque em PEGAR a cerveja' : 'E / clique — pegar a cerveja da mesa' ],
@@ -834,7 +837,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     // vape
     if (vapingT > 0) {
       vapingT -= dt;
-      if (!vapeCloudDone && vapingT < 1.6) { vapeCloudDone = true; emitBigCloud(); }
+      if (!vapeCloudDone && vapingT < 1.6) { vapeCloudDone = true; emitBigCloud(); emitWorldSmoke(me.x - Math.sin(yaw) * 0.6, 1.5, me.z - Math.cos(yaw) * 0.6, 40, true); }
     }
 
     // rede
@@ -957,9 +960,9 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       c.material.opacity = Math.min(1, k * 8) * (1 - k) * 0.62;
     });
     worldPuffs.forEach((c) => {
-      const u = c.userData; if (u.t < 0) return;
-      u.t += dt; const k = u.t / u.life;
-      if (k >= 1) { u.t = -1; c.material.opacity = 0; return; }
+      const u = c.userData; if (u.t === -1 && !u.life) return; if (u.t < 0 && !u.life) return;
+      u.t += dt; if (u.t < 0) return; const k = u.t / u.life;
+      if (k >= 1) { c.userData = { t: -1 }; c.material.opacity = 0; return; }
       c.position.x += u.vx * dt; c.position.y += u.vy * dt; c.position.z += u.vz * dt;
       c.scale.setScalar(u.s0 + (u.s1 - u.s0) * Math.min(1, k * 1.8));
       c.material.opacity = Math.min(1, k * 6) * (1 - k) * 0.5;
@@ -978,7 +981,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       const pko = Date.now() < p.koUntil;
       st.drink = p.drinking && !pko ? 1 : 0; st.smoke = p.smoking && !pko ? 1 : 0; st.ko = pko ? 1 : 0; st.drunk = p.drunk;
       st.bottle = p.holdBottle && !pko ? 1 : 0;
-      if (p.vaping > 0) { p.vaping -= dt; st.vape = 1; if (!p.vapeEmit && p.vaping < 1.6) { p.vapeEmit = true; emitWorldSmoke(p.x, 1.55, p.z, 24, true); } } else st.vape = 0;
+      if (p.vaping > 0) { p.vaping -= dt; st.vape = 1; if (!p.vapeEmit && p.vaping < 1.6) { p.vapeEmit = true; emitWorldSmoke(p.x - Math.sin(p.ry) * 0.5, 1.5, p.z - Math.cos(p.ry) * 0.5, 40, true); const dd = Math.hypot(p.x - me.x, p.z - me.z); if (dd < 3.5) emitBigCloud(0.7 * (1 - dd / 3.5) + 0.2); } } else st.vape = 0;
       a.setRed(Date.now() < p.redUntil);
       a.update(dt);
       if (st.smoke && Math.random() < dt * 1.2) { /* fumaça de terceiros é discreta */ }
@@ -1005,7 +1008,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     $('btn-drop').hidden = me.bottleLoc !== 'hand';
     const canUse = (!!target && target.type !== 'vip') || canPour();
     $('btn-use').hidden = !isTouch || !canUse;
-    if (canUse) $('btn-use').querySelector('span').textContent = target && target.type !== 'vip' ? (target.type === 'tbottle' || target.type === 'freebeer' ? 'PEGAR' : target.type === 'jukebox' ? 'MÚSICA' : target.type === 'toilet' ? 'URINAR' : target.type === 'sponsors' ? 'VER' : 'FALAR') : 'ENCHER';
+    if (canUse) $('btn-use').querySelector('span').textContent = target && target.type !== 'vip' ? (target.type === 'tbottle' || target.type === 'freebeer' ? 'PEGAR' : target.type === 'jukebox' ? 'MÚSICA' : target.type === 'provador' ? 'TROCAR' : target.type === 'toilet' ? 'URINAR' : target.type === 'sponsors' ? 'VER' : 'FALAR') : 'ENCHER';
     if (!isTouch) $('crosshair').style.opacity = canUse ? 1 : 0.7;
     // som: volume cai com a distância da jukebox e sobe no camarote
     music.tick(me, bar.inVip(me));

@@ -67,7 +67,8 @@
       if (!window.supabase) { try { await loadScript(SB_SRC); } catch (e) { await loadScript(SB_CDN); } }
       if (!window.supabase || !window.supabase.createClient) throw new Error('cliente do Supabase não carregou');
       const client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-        realtime: { params: { eventsPerSecond: 20 } },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, lock: async (_n, _t, fn) => await fn() },
+        realtime: { params: { eventsPerSecond: 20 }, timeout: 30000 },
       });
       const ch = client.channel(room, { config: { broadcast: { self: false, ack: false }, presence: { key: sid } } });
       const onMsg = safe(H.onMsg), onPeer = safe(H.onPeer), onUpd = safe(H.onPeerUpdate), onLeave = safe(H.onLeave);
@@ -93,19 +94,19 @@
       let first = true;
       try {
         await new Promise((resolve, reject) => {
-          const to = setTimeout(() => { first = false; reject(new Error('sem resposta do servidor em 12 s')); }, 12000);
+          let lastBad = '';
+          // o próprio cliente refaz a entrada no canal se der TIMED_OUT/CHANNEL_ERROR; só desistimos depois de 45 s
+          const to = setTimeout(() => { first = false; reject(new Error(lastBad || 'sem resposta do servidor em 45 s')); }, 45000);
           ch.subscribe((status, err) => {
             if (first) {
               if (status === 'SUBSCRIBED') { first = false; clearTimeout(to); resolve(); }
-              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                first = false; clearTimeout(to); reject(new Error(status + (err && err.message ? ': ' + err.message : '')));
-              }
+              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') lastBad = status + (err && err.message ? ': ' + err.message : '');
             } else if (!closed) {
               // quedas e voltas depois de conectado (rede móvel, tela bloqueada...): o cliente reconecta sozinho
               if (status === 'SUBSCRIBED') { H.onStatus('online'); doTrack(); }
               else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') H.onStatus('error', status);
             }
-          });
+          }, 30000);
         });
       } catch (e) {
         try { client.removeChannel(ch); client.realtime.disconnect(); } catch (x) { /* ok */ }
@@ -144,7 +145,7 @@
           console.warn(`[net] tempo real indisponível (tentativa ${attempt}): ${why}`);
           H.onStatus('error', why);
           if (!api) startLocal(true);
-          await sleep(Math.min(30000, 3000 * attempt));
+          await sleep(Math.min(15000, 2000 * attempt));
         }
       }
     }

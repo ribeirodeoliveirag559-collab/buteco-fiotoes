@@ -83,71 +83,115 @@
         if (rt.onClose) rt.onClose((e) => netLog('socket FECHOU' + (e && e.code != null ? ' (código ' + e.code + (e.reason ? ', ' + e.reason : '') + ')' : '')));
         if (rt.onError) rt.onError((e) => netLog('erro do socket' + (e && e.message ? ': ' + e.message : '')));
       }
-      const ch = client.channel(room, { config: { broadcast: { self: false, ack: false }, presence: { key: sid } } });
       const onMsg = safe(H.onMsg), onPeer = safe(H.onPeer), onUpd = safe(H.onPeerUpdate), onLeave = safe(H.onLeave);
-      ch.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload));
-      ch.on('presence', { event: 'sync' }, () => {
-        const st = ch.presenceState();
-        const now = new Set();
-        for (const key of Object.keys(st)) {
-          if (key === sid) continue;
-          const arr = st[key];
-          const m = arr[arr.length - 1];
-          if (!m) continue;
-          now.add(key);
-          const ser = JSON.stringify(m);
-          if (!known.has(key)) { known.set(key, ser); onPeer(key, m); }
-          else if (known.get(key) !== ser) { known.set(key, ser); onUpd(key, m); }
-        }
-        for (const key of [...known.keys()]) if (!now.has(key)) { known.delete(key); onLeave(key); }
-      });
+      let ch = null, closed = false, trackTimer = null, lastTrack = 0, pending = false;
+      let downTimer = null, rejoinTimer = null, rejoinTries = 0, watch = null, firstOk = null, lastBad = '';
+      const joined = () => !!ch && ch.state === 'joined';
 
-      let trackTimer = null, lastTrack = 0, pending = false, closed = false;
-      const doTrack = () => { pending = false; lastTrack = Date.now(); ch.track(meta).catch((e) => console.warn('[net] track falhou', e)); };
-      let first = true, downTimer = null;
+      // um canal novo (quando o servidor FECHA o canal, a biblioteca não volta sozinha: precisa criar outro)
+      const build = () => {
+        const c = client.channel(room, { config: { broadcast: { self: false, ack: false }, presence: { key: sid } } });
+        c.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload));
+        c.on('presence', { event: 'sync' }, () => {
+          const st = c.presenceState();
+          const now = new Set();
+          for (const key of Object.keys(st)) {
+            if (key === sid) continue;
+            const arr = st[key];
+            const m = arr[arr.length - 1];
+            if (!m) continue;
+            now.add(key);
+            const ser = JSON.stringify(m);
+            if (!known.has(key)) { known.set(key, ser); onPeer(key, m); }
+            else if (known.get(key) !== ser) { known.set(key, ser); onUpd(key, m); }
+          }
+          for (const key of [...known.keys()]) if (!now.has(key)) { known.delete(key); onLeave(key); }
+        });
+        // mensagens do próprio servidor (dizem POR QUE ele fechou/recusou o canal)
+        try { c.on('system', {}, (pl) => netLog('servidor: ' + JSON.stringify(pl).slice(0, 140))); } catch (e) { /* ok */ }
+        return c;
+      };
+      const doTrack = () => { pending = false; lastTrack = Date.now(); try { ch.track(meta).catch((e) => console.warn('[net] track falhou', e)); } catch (e) { /* ok */ } };
+
+      // tira o canal velho DE VERDADE da lista da biblioteca (client.channel(room) devolveria o canal antigo se ele ainda estivesse lá)
+      const dropChannel = async (c) => {
+        try { await Promise.race([client.removeChannel(c), sleep(2500)]); } catch (e) { /* ok */ }
+        try { const arr = client.realtime && client.realtime.channels; const i = arr ? arr.indexOf(c) : -1; if (i >= 0) arr.splice(i, 1); } catch (e) { /* ok */ }
+      };
+      const rejoin = (why) => {
+        if (closed || rejoinTimer) return;
+        const wait = Math.min(10000, 500 * Math.pow(2, rejoinTries++)); // 0,5 s, 1 s, 2 s, 4 s, 8 s, 10 s...
+        netLog('entrando de novo no canal em ' + wait / 1000 + ' s (' + why + ')');
+        rejoinTimer = setTimeout(async () => {
+          if (closed) { rejoinTimer = null; return; }
+          const old = ch;
+          await dropChannel(old);
+          rejoinTimer = null;
+          if (closed) return;
+          try { if (client.realtime && client.realtime.isConnected && !client.realtime.isConnected()) client.realtime.connect(); } catch (e) { /* ok */ }
+          ch = build(); sub(ch);
+        }, wait);
+      };
+
+      const onState = (c, status, err) => {
+        if (c !== ch || closed) return;
+        netLog('canal ' + status + (err && err.message ? ' — ' + err.message : ''));
+        if (status === 'SUBSCRIBED') {
+          rejoinTries = 0; clearTimeout(downTimer); downTimer = null;
+          if (firstOk) { firstOk(); firstOk = null; }
+          H.onStatus('online'); doTrack();
+          return;
+        }
+        if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+        lastBad = status + (err && err.message ? ': ' + err.message : '');
+        if (!firstOk && !downTimer) downTimer = setTimeout(() => { downTimer = null; if (!closed && !joined()) H.onStatus('error', status); }, 4000);
+        if (status === 'CLOSED') rejoin('o servidor fechou o canal'); // CLOSED não volta sozinho
+        // CHANNEL_ERROR / TIMED_OUT: a biblioteca tenta de novo; se não voltar em 12 s, a gente refaz o canal
+        else setTimeout(() => { if (!closed && c === ch && !joined()) rejoin(status + ' sem recuperar'); }, 12000);
+      };
+      const sub = (c) => c.subscribe((st, e) => onState(c, st, e), 30000);
+
+      ch = build();
       try {
         await new Promise((resolve, reject) => {
-          let lastBad = '';
-          // o próprio cliente refaz a entrada no canal se der TIMED_OUT/CHANNEL_ERROR; só desistimos depois de 45 s
-          const to = setTimeout(() => { first = false; reject(new Error(lastBad || 'sem resposta do servidor em 45 s')); }, 45000);
-          ch.subscribe((status, err) => {
-            if (first) {
-              if (status === 'SUBSCRIBED') { first = false; clearTimeout(to); resolve(); }
-              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') lastBad = status + (err && err.message ? ': ' + err.message : '');
-            } else if (!closed) {
-              // quedas e voltas depois de conectado (rede móvel, tela bloqueada...): o cliente reconecta sozinho
-              netLog('canal ' + status + (err && err.message ? ' — ' + err.message : ''));
-              if (status === 'SUBSCRIBED') { clearTimeout(downTimer); downTimer = null; H.onStatus('online'); doTrack(); }
-              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                if (!downTimer) downTimer = setTimeout(() => { downTimer = null; if (!closed) H.onStatus('error', status); }, 4000);
-              }
-            }
-          }, 30000);
+          // o 3D trava o navegador no celular: damos até 45 s pra entrar
+          const to = setTimeout(() => { firstOk = null; reject(new Error(lastBad || 'sem resposta do servidor em 45 s')); }, 45000);
+          firstOk = () => { clearTimeout(to); resolve(); };
+          sub(ch);
         });
       } catch (e) {
+        closed = true; clearTimeout(rejoinTimer);
         try { client.removeChannel(ch); client.realtime.disconnect(); } catch (x) { /* ok */ }
         throw e;
       }
-      doTrack();
-      const wake = (why) => { // voltou pro app / voltou a internet: confere o socket e reconecta na hora se caiu
+
+      // vigia: a cada 8 s confere se ainda estamos dentro do canal (cobre qualquer queda silenciosa)
+      watch = setInterval(() => {
+        if (closed || document.hidden || rejoinTimer) return;
+        try { if (client.realtime && client.realtime.isConnected && !client.realtime.isConnected()) { netLog('socket caído, religando'); client.realtime.connect(); } } catch (e) { /* ok */ }
+        if (!joined() && ch.state !== 'joining') rejoin('vigia: canal ' + ch.state);
+      }, 8000);
+
+      const wake = (why) => { // voltou pro app / voltou a internet: confere tudo na hora
         if (closed) return;
         try { if (client.realtime && client.realtime.isConnected && !client.realtime.isConnected()) { netLog('religando (' + why + ')'); client.realtime.connect(); } } catch (e) { /* ok */ }
-        doTrack();
+        if (!joined() && ch.state !== 'joining') rejoin('voltou (' + why + ')'); else doTrack();
       };
       const onVis = () => { if (!document.hidden) wake('voltou pro app'); };
       const onNet = () => wake('internet voltou');
       document.addEventListener('visibilitychange', onVis);
       window.addEventListener('online', onNet);
+      FT.netInfo = () => 'canal=' + (ch ? ch.state : '?') + ' socket=' + (client.realtime && client.realtime.isConnected && client.realtime.isConnected() ? 'aberto' : 'fechado');
       return {
         mode: 'online',
-        send: (d) => { ch.send({ type: 'broadcast', event: 'm', payload: d }); },
+        send: (d) => { if (joined()) ch.send({ type: 'broadcast', event: 'm', payload: d }); },
         setMeta: (m) => {
           meta = m;
           if (pending) return;
           pending = true;
-          trackTimer = setTimeout(doTrack, Math.max(0, 1500 - (Date.now() - lastTrack)));
+          trackTimer = setTimeout(() => { if (joined()) doTrack(); else pending = false; }, Math.max(0, 1500 - (Date.now() - lastTrack)));
         },
-        close: () => { closed = true; clearTimeout(trackTimer); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('online', onNet); try { client.removeChannel(ch); } catch (e) { /* ok */ } },
+        close: () => { closed = true; clearInterval(watch); clearTimeout(trackTimer); clearTimeout(rejoinTimer); clearTimeout(downTimer); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('online', onNet); try { client.removeChannel(ch); } catch (e) { /* ok */ } },
       };
     }
 
@@ -198,6 +242,7 @@
     add('Internet do navegador: ' + (navigator.onLine ? 'ligada' : 'DESLIGADA') + (c.effectiveType ? ' (' + c.effectiveType + (c.saveData ? ', economia de dados LIGADA' : '') + ')' : ''));
     add('Página: ' + location.origin);
     add('Tempo real: ' + (FT.netMode || '?') + (FT.netError ? ' | último erro: ' + FT.netError : ''));
+    if (FT.netInfo) add('Agora: ' + FT.netInfo());
     const hist = (FT.netLog || []).slice(-8);
     if (hist.length) add('Histórico recente:\n  ' + hist.join('\n  '));
     add('Biblioteca do Supabase: ' + (window.supabase && window.supabase.createClient ? 'carregada' : 'NÃO carregou'));

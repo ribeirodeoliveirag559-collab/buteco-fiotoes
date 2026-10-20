@@ -775,7 +775,7 @@
       back: dir === 'up', raised: pose !== 'none', sl, sr: -sl,
     };
     const pants = IDX.pants[look.pants] || PANTS[0];
-    const shoe = IDX.shoes[look.shoes] || SHOES[0];
+    const shoe = look.shoes === '_none' ? { draw() {} } : (IDX.shoes[look.shoes] || SHOES[0]); // '_none': sem calçado desenhado (o avatar 3D tem os próprios sapatos)
     const lift = [frame === 1 ? 2 : 0, frame === 2 ? 2 : 0];
 
     // pernas

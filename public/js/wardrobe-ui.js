@@ -59,16 +59,16 @@ export function initWardrobeUI(h) {
         b.dataset.key = sec.key; b.dataset.id = opt.id; b.title = opt.label;
         if (sec.swatch) b.innerHTML = `<i style="background:${opt.c}"></i><span>${opt.label}</span>`;
         else {
-          const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; b.appendChild(cv);
+          const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; b.appendChild(cv);
           const sp = document.createElement('span'); sp.textContent = opt.label; b.appendChild(sp);
           thumbs.push({ cv, sec, opt });
         }
-        b.onclick = () => { look[sec.key] = opt.id; refresh(); h.onLook(look); FT.audio && FT.audio.blip(); };
+        b.onclick = () => { look[sec.key] = opt.id; refresh(sec.key === 'skin' || sec.key === 'hairColor' || sec.key === 'hair'); h.onLook(look); FT.audio && FT.audio.blip(); };
         box.appendChild(b);
       }
       wrap.appendChild(box); panel.appendChild(wrap);
     }
-    refresh();
+    thumbs.forEach(drawThumb); refresh(true);
   }
   function drawThumb({ cv, sec, opt }) {
     const l = Object.assign({}, look, { [sec.key]: opt.id });
@@ -76,19 +76,37 @@ export function initWardrobeUI(h) {
     if (sec.key === 'hair' || sec.key === 'eyes' || sec.key === 'mouth') l.glasses = 'nenhum';
     const spr = S.get(l, {});
     const [sx, sy, sw, sh] = CROPS[sec.crop];
-    const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 64, 64);
-    const k = Math.min(60 / sw, 60 / sh);
-    c.drawImage(spr, sx, sy, sw, sh, (64 - sw * k) / 2, (64 - sh * k) / 2, sw * k, sh * k);
+    const Z = cv.width, c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, Z, Z);
+    const k = Math.min(Z * 0.94 / sw, Z * 0.94 / sh);
+    c.drawImage(spr, sx, sy, sw, sh, (Z - sw * k) / 2, (Z - sh * k) / 2, sw * k, sh * k);
   }
-  function refresh() {
-    thumbs.forEach(drawThumb);
+  // miniaturas 3D (mesmo modelo do jogo). Mostra o desenho de pixels na hora e troca pelo 3D em seguida, uma por vez.
+  const REGION = { head: 'head', torso: 'torso', legs: 'legs', feet: 'feet' };
+  let thumbGen = 0;
+  function renderThumbs() {
+    if (!h.thumb) return;
+    const gen = ++thumbGen, list = thumbs.slice();
+    (function next() {
+      if (gen !== thumbGen || !list.length) return;
+      const t = list.shift(), { sec, opt, cv } = t;
+      const base = Object.assign({}, S.DEFAULT_LOOK, { skin: look.skin, hairColor: look.hairColor, hair: look.hair });
+      const lk = Object.assign(base, { [sec.key]: opt.id });
+      if (sec.noHat) lk.hat = 'nenhum';
+      if (sec.key !== 'glasses' && sec.key !== 'hat') lk.glasses = 'nenhum';
+      if (sec.key === 'hat') lk.hair = look.hair;
+      h.thumb(S.sanitizeLook(lk), sec.key === 'hat' ? 'hat' : (REGION[sec.crop] || 'torso'), cv);
+      setTimeout(next, 8);
+    })();
+  }
+  function refresh(rethumb) {
     document.querySelectorAll('#panel .opt').forEach((b) => b.classList.toggle('on', look[b.dataset.key] === b.dataset.id));
+    if (rethumb) renderThumbs();
   }
   function checkName() { $('btn-enter').disabled = $('btn-enter-float').disabled = cleanName($('name').value).length < 2; }
 
   $('name').addEventListener('input', checkName);
   $('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-enter').click(); });
-  $('btn-random').onclick = () => { look = S.randomLook(); refresh(); h.onLook(look); FT.audio && FT.audio.pop(); };
+  $('btn-random').onclick = () => { look = S.randomLook(); refresh(true); h.onLook(look); FT.audio && FT.audio.pop(); };
   $('btn-spin').onclick = () => h.onTurn();
   document.querySelectorAll('#poses button').forEach((b) => {
     b.onclick = () => {

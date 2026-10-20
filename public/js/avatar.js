@@ -3,6 +3,9 @@
 import * as THREE from 'three';
 import { rbox } from './shapes.js';
 import { toTex, straw, noise } from './textures.js';
+import { makeHat } from './gear-hats.js';
+import { makeShoe } from './gear-shoes.js';
+import { NEW_SHIRTS, buildTorso, buildArm, buildPelvis, buildLeg, hasPants } from './gear-cloth.js';
 
 const FT = window.FT;
 const S = FT.sprites;
@@ -12,13 +15,6 @@ const HEAD = 0.4, NECK = 0.04, TORSO_H = 0.6, TORSO_W = 0.54, TORSO_D = 0.27, LE
 const SHOULDER_Y = LEG_H + TORSO_H - 0.05;
 export const EYE_HEIGHT = LEG_H + TORSO_H + NECK + HEAD * 0.55;
 
-const FOOT = {
-  americana: { w: 0.255, h: 0.11, l: 0.34, c: '#8b5a2b', sole: '#2a1a10', taper: 1 },
-  'bico-fino': { w: 0.22, h: 0.1, l: 0.44, c: '#3a2216', sole: '#1a0f09', taper: 0.22 },
-  'botina-amarela': { w: 0.27, h: 0.13, l: 0.35, c: '#e6b422', sole: '#efe3c3', taper: 0.9 },
-  'chinelo-couro': { w: 0.2, h: 0.035, l: 0.34, c: '#9b6a3c', sole: '#7a5230', taper: 1, skin: true, strap: '#5a3a20' },
-  'sandalia-quadrada': { w: 0.23, h: 0.05, l: 0.32, c: '#2b2b2b', sole: '#2b2b2b', taper: 1, skin: true, strap: '#d8b27a' },
-};
 
 function crop(src, x, y, w, h) {
   const c = document.createElement('canvas');
@@ -147,70 +143,36 @@ export function makeJoint() {
 export function hatMesh(id) {
   const hat = S.HATS.find((h) => h.id === id);
   if (!hat || id === 'nenhum') return null;
-  const g = new THREE.Group();
-  const cowboy = (base, dark, band, bandH, tall, tex, gold) => {
-    const map = tex ? toTex(tex, { repeat: [6, 2] }) : null;
-    const m = lam({ color: base, map, side: THREE.DoubleSide });
-    const crownPts = [[0.0, tall], [0.09, tall + 0.015], [0.14, tall - 0.02], [0.17, tall * 0.55], [0.19, 0]].map((p) => new THREE.Vector2(p[0], p[1]));
-    const crown = new THREE.Mesh(new THREE.LatheGeometry(crownPts, 24), m);
-    const brimPts = [[0.17, 0.0], [0.26, -0.012], [0.33, 0.012], [0.375, 0.065]].map((p) => new THREE.Vector2(p[0], p[1]));
-    const brim = new THREE.Mesh(new THREE.LatheGeometry(brimPts, 28), m);
-    const bandM = new THREE.Mesh(new THREE.CylinderGeometry(0.193, 0.197, bandH, 24, 1, true), lam({ color: band, side: THREE.DoubleSide }));
-    bandM.position.y = bandH / 2 + 0.01;
-    const items = [crown, brim, bandM];
-    if (gold) {
-      const buckle = new THREE.Mesh(rbox(0.06, 0.05, 0.012), new THREE.MeshStandardMaterial({ color: 0xe8c040, metalness: 0.8, roughness: 0.3 }));
-      buckle.position.set(0, bandH / 2 + 0.01, 0.2);
-      items.push(buckle);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.372, 0.007, 6, 40), new THREE.MeshStandardMaterial({ color: 0xe8c040, metalness: 0.8, roughness: 0.3 }));
-      rim.rotation.x = Math.PI / 2; rim.position.y = 0.065;
-      items.push(rim);
-    }
-    items.forEach((m2) => { m2.castShadow = true; g.add(m2); });
-  };
-  if (id === 'palha-branco') cowboy('#f4eed8', 0, '#6b4a2b', 0.045, 0.2, straw('#efe6c8', '#c4b588'));
-  else if (id === 'palha-amarelo') cowboy('#e8c24a', 0, '#6b4a2b', 0.045, 0.2, straw('#e8c24a', '#b8962a'));
-  else if (id === 'cowboy-preto') cowboy('#1b1b20', 0, '#3b3b44', 0.045, 0.2, null);
-  else if (id === 'magnata') cowboy('#fbfaf2', 0, '#d9a92a', 0.06, 0.24, null, true);
-  else if (id.startsWith('bone-')) {
-    const col = new THREE.Color(hat.c);
-    const m = lam({ color: col });
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.225, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), m);
-    dome.scale.set(1, 0.85, 1.03); dome.position.y = 0.0;
-    const bill = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.014, 20, 1, false, -Math.PI / 2, Math.PI), lam({ color: col.clone().multiplyScalar(0.8) }));
-    bill.position.set(0, 0.035, 0.12); bill.rotation.x = 0.12;
-    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), m); btn.position.y = 0.19;
-    [dome, bill, btn].forEach((m2) => { m2.castShadow = true; g.add(m2); });
-  }
-  return g;
+  return makeHat(id, hat.c);
 }
 
-function hairMeshes(id, color) {
+function hairMeshes(id, color, underHat = false) {
   const out = [];
   if (id === 'careca') return out;
   const m = lam({ color, map: toTex(noise(color, 0.2), { nearest: true }) });
   const H = HEAD;
-  const add = (w, h, d, x, y, z, rx = 0) => {
+  const add = (w, h, d, x, y, z, rx = 0, top = false) => {
+    if (top && underHat) return; // o chapéu tampa o cabelo do topo da cabeça
     const b = new THREE.Mesh(rbox(w, h, d), m);
     b.position.set(x, y, z); b.rotation.x = rx; b.castShadow = true; out.push(b);
   };
   switch (id) {
-    case 'curto': add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0); break;
-    case 'degrade': add(H * 1.0, 0.1, H * 1.0, 0, H / 2 + 0.005, 0); break;
-    case 'oldmoney': add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0); add(H * 0.9, 0.12, 0.05, 0, H / 2 - 0.05, -H / 2 - 0.02); break;
-    case 'topete': add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0); add(H * 0.92, 0.1, H * 0.6, 0, H / 2 + 0.07, H * 0.18, -0.28); break;
+    case 'curto': add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0, 0, true); break;
+    case 'degrade': add(H * 1.0, 0.1, H * 1.0, 0, H / 2 + 0.005, 0, 0, true); break;
+    case 'oldmoney': add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0, 0, true); add(H * 0.9, 0.12, 0.05, 0, H / 2 - 0.05, -H / 2 - 0.02); break;
+    case 'topete': add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0, 0, true); add(H * 0.92, 0.1, H * 0.6, 0, H / 2 + 0.07, H * 0.18, -0.28, true); break;
     case 'ondulado':
-      add(H * 1.14, 0.14, H * 1.14, 0, H / 2 - 0.005, 0);
+      add(H * 1.14, 0.14, H * 1.14, 0, H / 2 - 0.005, 0, 0, true);
       add(0.05, H * 0.72, H * 1.0, H / 2 + 0.03, -0.02, 0); add(0.05, H * 0.72, H * 1.0, -H / 2 - 0.03, -0.02, 0);
       add(H * 1.1, H * 0.78, 0.06, 0, -0.03, -H / 2 - 0.03);
       break;
     case 'longo':
-      add(H * 1.14, 0.14, H * 1.14, 0, H / 2 - 0.005, 0);
+      add(H * 1.14, 0.14, H * 1.14, 0, H / 2 - 0.005, 0, 0, true);
       add(0.05, H * 1.5, H * 0.95, H / 2 + 0.03, -H * 0.5, -0.02); add(0.05, H * 1.5, H * 0.95, -H / 2 - 0.03, -H * 0.5, -0.02);
       add(H * 1.12, H * 2.1, 0.07, 0, -H * 0.95, -H / 2 - 0.04);
       break;
     case 'mullet':
-      add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0);
+      add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0, 0, true);
       add(H * 0.95, H * 1.25, 0.06, 0, -H * 0.42, -H / 2 - 0.03);
       add(0.04, H * 0.75, 0.14, H / 2 + 0.02, -0.04, -0.06); add(0.04, H * 0.75, 0.14, -H / 2 - 0.02, -0.04, -0.06);
       break;
@@ -244,7 +206,7 @@ export function createAvatar(lookIn, opts = {}) {
   function build(lk) {
     clear();
     look = opts.npc ? lk : S.sanitizeLook(lk);
-    const bare = Object.assign({}, look, { hat: 'nenhum' });
+    const bare = Object.assign({}, look, { hat: 'nenhum', shoes: '_none' });
     const down = S.get(bare, { dir: 'down' });
     const up = S.get(bare, { dir: 'up' });
     const skinC = (S.SKINS.find((s) => s.id === look.skin) || S.SKINS[1]).c;
@@ -275,9 +237,9 @@ export function createAvatar(lookIn, opts = {}) {
     const headG = new THREE.Group();
     headG.position.y = LEG_H + TORSO_H + NECK + HEAD / 2;
     headG.add(head);
-    hairMeshes(hairId, hairC).forEach((h) => { headG.add(h); track(h.geometry); track(h.material); });
     const hm = hatMesh(look.hat);
-    if (hm) { hm.position.y = HEAD / 2 - 0.01; headG.add(hm); }
+    hairMeshes(hairId, hairC, !!hm).forEach((h) => { headG.add(h); track(h.geometry); track(h.material); });
+    if (hm) { hm.position.y = HEAD / 2 - 0.045; headG.add(hm); hm.traverse((o) => { if (o.isMesh) { track(o.geometry); if (!(o.material.userData && o.material.userData.shared)) track(o.material); } }); }
     P.faceMat = headMats[4]; P.faceNormal = headMats[4]; P.faceRed = mkMat(faceFrontRed); P.faceWink = mkMat(faceFrontWink);
     model.add(headG);
     P.head = headG;
@@ -287,12 +249,20 @@ export function createAvatar(lookIn, opts = {}) {
     neck.position.y = LEG_H + TORSO_H + NECK / 2;
     model.add(neck);
 
-    // tronco (camisa + cós da calça)
-    const torsoMats = [mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(torsoF, 'shirt'), mkMat(torsoB, 'shirt')];
-    const torso = new THREE.Mesh(track(rbox(TORSO_W, TORSO_H, TORSO_D)), torsoMats);
-    torso.position.y = LEG_H + TORSO_H / 2; torso.castShadow = true;
+    // tronco: camisas novas = modelo 3D com ombros/gola/estampa em alta; as escondidas (NPC: top, vestido, sobretudo) seguem no modelo antigo
+    const newShirt = NEW_SHIRTS.has(look.shirt);
+    const trackTree = (o) => o.traverse((m) => { if (m.isMesh) { track(m.geometry); if (!(m.material.userData && m.material.userData.shared)) track(m.material); } });
+    let torso;
+    if (newShirt) { torso = buildTorso(look.shirt, skinC); trackTree(torso); }
+    else {
+      const torsoMats = [mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(torsoF, 'shirt'), mkMat(torsoB, 'shirt')];
+      torso = new THREE.Mesh(track(rbox(TORSO_W, TORSO_H, TORSO_D)), torsoMats);
+      torso.position.y = LEG_H + TORSO_H / 2; torso.castShadow = true;
+    }
     model.add(torso);
     P.torso = torso;
+    const pantsId = hasPants(look.pants) ? look.pants : 'jeans-azul';
+    const pelvis = buildPelvis(pantsId); trackTree(pelvis); model.add(pelvis); P.pelvis = pelvis;
 
     // saia do vestido
     if (look.shirt && look.shirt.startsWith('vestido')) {
@@ -310,15 +280,18 @@ export function createAvatar(lookIn, opts = {}) {
 
     // braços
     const mkArm = (x0, sx) => {
-      const ac = crop(down, x0, 28, 5, 21);
-      const am = mkMat(ac, 'shirt');
-      const geo = track(rbox(ARM_W, ARM_L, ARM_W));
-      geo.translate(0, -ARM_L / 2, 0);
-      const arm = new THREE.Mesh(geo, [am, am, mkMat(shirtC), mkMat(skinC), am, am]);
-      arm.castShadow = true;
       const pivot = new THREE.Group();
-      pivot.position.set(sx * (TORSO_W / 2 + ARM_W / 2 + 0.005), SHOULDER_Y, 0);
-      pivot.add(arm);
+      pivot.position.set(sx * (TORSO_W / 2 + ARM_W / 2 + (newShirt ? 0.0 : 0.005)), SHOULDER_Y, 0);
+      if (newShirt) { const ag = buildArm(look.shirt, skinC, sx); trackTree(ag); pivot.add(ag); }
+      else {
+        const ac = crop(down, x0, 28, 5, 21);
+        const am = mkMat(ac, 'shirt');
+        const geo = track(rbox(ARM_W, ARM_L, ARM_W));
+        geo.translate(0, -ARM_L / 2, 0);
+        const arm = new THREE.Mesh(geo, [am, am, mkMat(shirtC), mkMat(skinC), am, am]);
+        arm.castShadow = true;
+        pivot.add(arm);
+      }
       model.add(pivot);
       return pivot;
     };
@@ -334,48 +307,22 @@ export function createAvatar(lookIn, opts = {}) {
     P.joint = makeJoint(); P.joint.position.set(0, 0, 0.03); P.joint.visible = false; P.hand.add(P.joint);
     P.vape = makeVape(); P.vape.position.set(0, 0.02, 0.03); P.vape.visible = false; P.hand.add(P.vape);
 
-    // pernas
-    const mkLeg = (x0, sx) => {
-      const lc = crop(down, x0, 51, 8, 13);
-      const lb = crop(up, x0, 51, 8, 13);
-      const lm = mkMat(lc, 'pants'), bm = mkMat(lb, 'pants');
-      const sideCol = sample(lc, 0, 3);
-      const geo = track(rbox(LEG_W, LEG_H, 0.22));
-      geo.translate(0, -LEG_H / 2, 0);
-      const sm = mkMat(sideCol);
-      const leg = new THREE.Mesh(geo, [sm, sm, sm, sm, lm, bm]);
-      leg.castShadow = true;
+    // pernas: pele + calça (com barra) + calçado, cada um com modelo 3D próprio
+    const mkLeg = (sx) => {
       const pivot = new THREE.Group();
       pivot.position.set(sx * 0.14, LEG_H, 0);
-      pivot.add(leg);
-      // pé
-      const f = FOOT[look.shoes] || FOOT.americana;
-      const fg = track(rbox(f.w, f.h, f.l));
-      if (f.taper < 1) {
-        const pos = fg.attributes.position;
-        for (let i = 0; i < pos.count; i++) if (pos.getZ(i) > 0) pos.setX(i, pos.getX(i) * f.taper);
-        pos.needsUpdate = true;
-      }
-      const foot = new THREE.Mesh(fg, mkMat(f.skin ? f.sole : f.c));
-      foot.position.set(0, -LEG_H + f.h / 2, f.l / 2 - 0.1);
-      foot.castShadow = true;
-      pivot.add(foot);
-      if (f.skin) {
-        const sk = new THREE.Mesh(track(rbox(f.w * 0.85, 0.05, f.l * 0.85)), mkMat(skinC));
-        sk.position.set(0, -LEG_H + f.h + 0.02, f.l / 2 - 0.1); pivot.add(sk);
-        const strap = new THREE.Mesh(track(rbox(f.w * 0.95, 0.025, 0.07)), mkMat(f.strap));
-        strap.position.set(0, -LEG_H + f.h + 0.05, 0.05); pivot.add(strap);
-      }
+      const lg = buildLeg(pantsId, skinC); trackTree(lg); pivot.add(lg);
+      const shoe = makeShoe(look.shoes, skinC); shoe.position.y = -LEG_H;
+      trackTree(shoe);
+      pivot.add(shoe);
       model.add(pivot);
       return pivot;
     };
-    P.legL = mkLeg(21, 1);
-    P.legR = mkLeg(11, -1);
+    P.legL = mkLeg(1);
+    P.legR = mkLeg(-1);
     if (opts.curvy) {
-      P.legL.scale.x = P.legR.scale.x = 1.22; P.legL.position.x = 0.16; P.legR.position.x = -0.16;
-      torso.scale.set(1.0, 1.0, 1.0);
-      const hips = new THREE.Mesh(track(rbox(TORSO_W * 1.2, 0.16, TORSO_D * 1.2)), mkMat(sample(crop(down, 11, 46, 18, 5), 4, 2)));
-      hips.position.y = LEG_H + 0.02; hips.castShadow = true; model.add(hips);
+      P.legL.scale.x = P.legR.scale.x = 1.2; P.legL.position.x = 0.16; P.legR.position.x = -0.16;
+      pelvis.scale.set(1.16, 1, 1.12);
       headG.scale.setScalar(0.94);
     }
     applyRed();

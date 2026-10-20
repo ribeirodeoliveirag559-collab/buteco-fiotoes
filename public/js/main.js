@@ -105,10 +105,12 @@ async function boot() {
   wardrobe = createWardrobe(quality, renderer, (acct && acct.look && Object.keys(acct.look).length >= 8 ? acct.look : S.DEFAULT_LOOK));
   gameCam = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 60);
   post = createPost(renderer, wardrobe.scene, wardrobe.camera, quality);
+  window.__wd = wardrobe; // depuração: câmera/avatar do guarda-roupa
   post.canvas = renderer.domElement;
 
   ui = initWardrobeUI({
     onLook: (l) => wardrobe.setLook(l),
+    thumb: (lk, region, cv) => wardrobe.thumb(lk, region, cv),
     onPose: (p) => wardrobe.setPose(p),
     onTurn: () => wardrobe.turnAround(),
     onEnter: enter,

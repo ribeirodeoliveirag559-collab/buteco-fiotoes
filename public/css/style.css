@@ -544,3 +544,7 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 #btn-voice.on { background: #17613a; border-color: #4be37a; box-shadow: 0 0 0 2px #4be37a66; }
 #btn-voice.mute { background: #5a4310; border-color: var(--amber); }
 #btn-voice.on.speak { box-shadow: 0 0 0 4px #4be37acc, 0 0 18px #4be37a; }
+
+
+/* miniaturas 3D das peças (suaves, não pixeladas) */
+.opt canvas { image-rendering: auto; background: radial-gradient(circle at 50% 38%, #6a4a30, #2f1d10); }

@@ -32,6 +32,8 @@ Bar 3D multiplayer em **primeira pessoa**, direto no navegador (PC e celular). T
 
 - Ícones: [Lucide](https://lucide.dev) (ISC), gerados em `public/icons.svg` por `node scripts/icons.mjs`. Nada de emoji na interface.
 - Iluminação: mapa de ambiente procedural (`public/js/env.js`, RoomEnvironment) dá reflexo ao metal (torneiras, dourado) — sem ele o metal fica preto — e luz ambiente suave; exposição 1.35.
+- **Roupas e calçados 3D** (`public/js/gear-*.js`): tudo procedural, sem imagens. Camisas com ombros, golas, mangas e punhos, estampas em vetor (folha, AURA, BABY DOW...), 6 xadrezes diferentes (búfalo, tartan, guingão, madras...), calças de jeans com brim, costuras, bolsos e cinto com fivela, bermudas e shorts com acabamento próprio. Calçados com construção própria (bota americana, bico fino com bordado, botina de camurça com cadarço, chinelo e sandália com tiras). Chapéus moldados (copa com vinco e pinça, aba curvada) que **cobrem o cabelo**, e bonés com emblemas diferentes. As miniaturas do guarda-roupa são renders desses mesmos modelos 3D.
+- Pra criar uma peça nova: camisas e calças em `gear-cloth-art.js` (desenho) + `gear-cloth.js` (forma); calçados em `gear-shoes.js`; chapéus em `gear-hats.js`. As peças escondidas das NPCs (top, vestido, sobretudo) ainda usam o modelo antigo em blocos.
 - Formas arredondadas (RoundedBoxGeometry), roupas com textura de tecido/jeans em alta, relevo nas paredes e no piso.
 - No celular o bar pede a tela na horizontal (no Android tenta travar sozinho).
 

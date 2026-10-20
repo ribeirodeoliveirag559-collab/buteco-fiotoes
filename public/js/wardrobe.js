@@ -204,5 +204,44 @@ export function createWardrobe(quality, renderer, look) {
   };
   api.setPose('idle');
   if (renderer) applyEnv(scene, renderer, { diffuse: 0.4, metal: 1.0 });
+
+  // ---- miniaturas 3D das peças (painel do guarda-roupa): mesmo modelo do jogo, enquadrado por região ----
+  const TS = 112;
+  let thumbRT = null, thumbScene = null, thumbCam = null, thumbAv = null, thumbBuf = null;
+  const VIEWS = { // c = altura do centro, d = distância, f = fov, x = deslocamento lateral (3/4)
+    head: { c: 1.62, d: 2.1, f: 17, x: 0.55 }, hat: { c: 1.66, d: 2.5, f: 22, x: 0.45 }, torso: { c: 1.04, d: 2.3, f: 24, x: 0.5 }, legs: { c: 0.42, d: 2.6, f: 24, x: 0.55 }, feet: { c: 0.11, d: 1.25, f: 22, x: 0.62 },
+  };
+  function initThumbs() {
+    if (thumbRT || !renderer) return;
+    thumbRT = new THREE.WebGLRenderTarget(TS, TS, { colorSpace: THREE.SRGBColorSpace, samples: hi ? 4 : 0 });
+    thumbScene = new THREE.Scene();
+    thumbScene.add(new THREE.HemisphereLight(0xffffff, 0xb9a898, 1.25));
+    const key = new THREE.DirectionalLight(0xfff1dc, 2.2); key.position.set(1.6, 2.6, 3); thumbScene.add(key);
+    const rim = new THREE.DirectionalLight(0xbcd0ff, 0.8); rim.position.set(-2, 1.5, -1); thumbScene.add(rim);
+    applyEnv(thumbScene, renderer, { diffuse: 0.35, metal: 1.0 });
+    thumbCam = new THREE.PerspectiveCamera(22, 1, 0.05, 20);
+    thumbAv = createAvatar(S.DEFAULT_LOOK, { noName: true });
+    thumbScene.add(thumbAv.root);
+    thumbBuf = new Uint8Array(TS * TS * 4);
+  }
+  // desenha a miniatura de um look/região dentro do canvas "out"; devolve false se não deu
+  api.thumb = (lk, region, out) => {
+    try {
+      initThumbs(); if (!thumbRT) return false;
+      thumbAv.setLook(lk); thumbAv.update(0);
+      const v = VIEWS[region] || VIEWS.torso;
+      thumbCam.fov = v.f; thumbCam.updateProjectionMatrix();
+      thumbCam.position.set(v.x * v.d * 0.5, v.c + 0.04, v.d); thumbCam.lookAt(0, v.c, 0);
+      const old = renderer.getRenderTarget(), oc = new THREE.Color(), oa = renderer.getClearAlpha(); renderer.getClearColor(oc);
+      renderer.setRenderTarget(thumbRT); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(thumbScene, thumbCam);
+      renderer.readRenderTargetPixels(thumbRT, 0, 0, TS, TS, thumbBuf);
+      renderer.setRenderTarget(old); renderer.setClearColor(oc, oa);
+      const img = new ImageData(TS, TS);
+      for (let y = 0; y < TS; y++) img.data.set(thumbBuf.subarray((TS - 1 - y) * TS * 4, (TS - y) * TS * 4), y * TS * 4);
+      const tmp = document.createElement('canvas'); tmp.width = tmp.height = TS; tmp.getContext('2d').putImageData(img, 0, 0);
+      const c = out.getContext('2d'); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.clearRect(0, 0, out.width, out.height); c.drawImage(tmp, 0, 0, out.width, out.height);
+      return true;
+    } catch (e) { console.warn('[miniatura] falhou', e); return false; }
+  };
   return api;
 }

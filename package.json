@@ -1,0 +1,17 @@
+﻿{
+  "name": "buteco-fiotoes",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Buteco FIOTÕES - bar 3D multiplayer em primeira pessoa",
+  "scripts": {
+    "dev": "node server.js",
+    "vendor": "node scripts/vendor.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0"
+  },
+  "devDependencies": {
+    "three": "0.160.1"
+  }
+}

@@ -1,38 +1,49 @@
-# FIOTÕES 🍺
+# Buteco FIOTÕES 🍺
 
-Jogo online (navegador, celular ou PC) de bar com torneio de cerveja, feito em HTML + Canvas, sem build.
+Bar 3D multiplayer em **primeira pessoa**, direto no navegador (PC e celular). Torneio de quem bebe mais cerveja entre amigos.
+
+- **Front**: HTML + [Three.js](https://threejs.org) (vendorizado em `public/vendor`), sem build. Todas as texturas/modelos são gerados por código.
+- **Hospedagem**: Vercel (site estático em `public/` + funções em `api/`).
+- **Banco**: Neon (Postgres) — jogadores, visual e placar do dia. O servidor confere o tempo de cada cerveja (anti-trapaça).
+- **Tempo real** (posição, chat, animações): Supabase Realtime *broadcast/presence* — não usa tabela nenhuma.
+
+## Fluxo do jogo
+
+1. **Guarda-roupa**: o personagem em frente a um guarda-roupa velho; o painel lateral escolhe cabelo, olhos, boca, camisa, calça, calçado, chapéu e óculos (tudo em 3D ao vivo).
+2. **Buteco**: primeira pessoa. `WASD` anda, mouse olha, **segure `ESPAÇO` (ou botão esquerdo / botão na tela)** ~5 s = 1 cerveja. `E` fala com o HOMEM do canto escuro (baseado → olhos vermelhos + tela psicodélica). `Enter` chat, `Tab` placar.
+3. A partir da 10ª cerveja a tela fica borrada/dobrada/balançando e o personagem anda torto. Perto da 24ª ele apaga por 10 s.
 
 ## Rodar local
 
 ```bash
-node server.js     # http://localhost:5174
+npm install
+npm run dev      # http://localhost:5174
 ```
 
-Sem configurar nada ele roda em **modo teste**: só enxerga outras abas do mesmo navegador.
-Para simular amigos, abra `http://localhost:5174/?p=ana` e `http://localhost:5174/?p=beto` (o `?p=` separa os dados salvos).
+Crie `.env.local` (não vai pro git):
 
-## Ligar o multiplayer de verdade (Supabase Realtime)
+```
+DATABASE_URL=postgresql://...neon.tech/neondb?sslmode=require
+SUPABASE_URL=https://xxxx.supabase.co            # opcional
+SUPABASE_ANON_KEY=eyJ...                          # opcional
+```
 
-1. Crie um projeto grátis em https://supabase.com
-2. Project Settings → API: copie **Project URL** e a chave **anon public**
-3. Cole em `js/config.js` (`SUPABASE_URL` e `SUPABASE_ANON_KEY`)
+Sem as chaves do Supabase o jogo roda em **modo teste**: só enxerga outras abas do mesmo navegador
+(abra `/?p=ana` e `/?p=beto` — o `?p=` separa os dados salvos de cada aba).
+Sem `DATABASE_URL` ele joga offline, sem placar online.
 
-Não precisa criar tabela. O jogo usa só Realtime (broadcast + presence).
+## Banco (Neon)
 
-## Publicar (Vercel)
+`db/schema.sql` — tabelas `players` e `scores`.
 
-É um site estático: `vercel --prod` dentro da pasta (ou arraste a pasta no painel da Vercel).
+## Deploy (Vercel)
 
-## Como funciona
+Variáveis de ambiente do projeto: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (a anon key é pública por natureza).
 
-- **Personagem**: nome + visual salvos no aparelho (`localStorage`).
-- **Cerveja**: segurar o botão (ou `ESPAÇO`) ~5 s = +1 cerveja. Soltar antes cancela.
-- **Bebedeira**: a partir da 10ª cerveja a tela fica borrada, dobrada, balançando, e o personagem anda torto. O álcool baixa 1 cerveja a cada ~50 s (o placar não baixa). Perto da 24ª o personagem apaga por 10 s.
-- **HOMEM** do cantinho escuro: clique nele, pegue o baseado, fume → olhos vermelhos (todo mundo vê) e tela psicodélica por ~1 min.
-- **Placar**: cartaz na parede (clique pra abrir a lista completa). Zera à meia-noite. Cada aparelho guarda o placar do dia e os amigos online trocam entre si, então não há banco de dados.
-- **Tráfego de rede**: só manda mensagem quando você muda de direção/destino (os outros simulam o resto), por isso cabe no plano grátis do Supabase.
+## Realtime — limites do plano grátis
 
-## Limites conhecidos
+O cliente só manda mensagem de movimento ~4×/s enquanto você anda (os outros interpolam), então ~20 pessoas cabem folgado no plano grátis do Supabase.
 
-- A contagem de cervejas vem do navegador de cada um, então quem entende de DevTools consegue trapacear. Para um torneio entre amigos tá ok; se quiser blindar, o próximo passo é um servidor que valide o tempo de cada cerveja.
-- Teclas: `WASD`/setas andam, `Enter` chat, `E` fala com o HOMEM/fuma, `Tab` placar.
+## Qualidade gráfica
+
+Automática: celular/PC fraco usa `low` (sem bloom nem sombras, resolução 1×). Force com `?q=low` ou `?q=high`. Se o FPS cair abaixo de 28 no modo `high`, ele baixa sozinho.

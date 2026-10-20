@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0710">
+  <title>Buteco FIOTÕES</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🍺%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  { "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three/addons/" } }
+  </script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="loading"><div class="neon">FIOTÕES</div><p>acendendo as luzes…</p></div>
+
+<!-- ===================== GUARDA-ROUPA ===================== -->
+<section id="screen-wardrobe" class="screen" hidden>
+  <header class="brand">
+    <h1 class="neon">BUTECO FIOTÕES</h1>
+    <p>Antes de entrar, escolha o visual no guarda-roupa</p>
+  </header>
+
+  <button id="drawer-toggle" class="drawer-toggle">👕 Roupas</button>
+  <aside id="drawer" class="open">
+    <div class="drawer-head" id="drawer-head">GUARDA-ROUPA</div>
+    <label class="name-field">
+      <span>Seu nome no buteco</span>
+      <input id="name" maxlength="14" placeholder="Ex: Gustavo" autocomplete="off" spellcheck="false">
+    </label>
+    <nav class="tabs" id="tabs"></nav>
+    <div id="panel" class="panel"></div>
+    <div class="seg" id="poses">
+      <button data-pose="idle" class="on">Parado</button>
+      <button data-pose="walk">Andando</button>
+      <button data-pose="mug">Bebendo</button>
+      <button data-pose="joint">Fumando</button>
+    </div>
+    <div class="row">
+      <button id="btn-spin" class="ghost">🔄 Virar</button>
+      <button id="btn-random" class="ghost">🎲 Aleatório</button>
+    </div>
+    <button id="btn-enter" class="primary" disabled>ENTRAR NO BUTECO 🍺</button>
+    <div id="enter-error" class="fine"></div>
+  </aside>
+  <div class="drag-hint">arraste pra girar o personagem</div>
+</section>
+
+<!-- ===================== O BUTECO ===================== -->
+<section id="screen-game" class="screen" hidden>
+  <div id="lookzone"></div>
+  <div id="crosshair"></div>
+  <div id="prompt" hidden></div>
+
+  <div id="hud">
+    <div class="hud-tl">
+      <span class="mini-logo">FIOTÕES</span>
+      <span id="online" class="pill">👥 1</span>
+      <span id="netmode" class="pill dim"></span>
+    </div>
+
+    <div class="hud-tr">
+      <button id="btn-board" class="round" title="Placar (Tab)">🏆</button>
+      <button id="btn-chat" class="round touch-only" title="Conversar">💬</button>
+      <button id="btn-sound" class="round" title="Som">🔊</button>
+      <button id="btn-edit" class="round" title="Voltar ao guarda-roupa">👕</button>
+    </div>
+
+    <div id="status" class="status">
+      <div class="beer-count"><span id="beer-n">0</span><small>cervejas</small></div>
+      <div class="level"><div id="level-label">Sóbrio</div><div class="bar"><i id="level-bar"></i></div></div>
+    </div>
+
+    <div id="chatlog"></div>
+    <form id="chatform" autocomplete="off">
+      <input id="chatinput" maxlength="80" placeholder="Fale no bar… (Enter)" autocomplete="off">
+      <button type="submit">➤</button>
+    </form>
+
+    <div id="joy" class="touch-only"><div id="joy-knob"></div></div>
+
+    <div class="actions">
+      <button id="btn-use" class="use" hidden>✋<span>FALAR</span></button>
+      <button id="btn-smoke" class="smoke" hidden>🚬<span>FUMAR</span></button>
+      <button id="btn-drink" class="drink" style="--p:0">
+        <b>🍺</b><span>SEGURE<br>PRA BEBER</span>
+      </button>
+    </div>
+
+    <div id="hint" class="hint"><kbd>WASD</kbd> andar · mouse olhar · segure <kbd>ESPAÇO</kbd> ou botão esquerdo pra beber · <kbd>E</kbd> falar · <kbd>Enter</kbd> chat · <kbd>Tab</kbd> placar</div>
+
+    <div id="dialog" hidden>
+      <canvas id="dlg-face" width="72" height="72"></canvas>
+      <div class="dlg-body">
+        <div class="dlg-name">???</div>
+        <div id="dlg-text"></div>
+        <div id="dlg-opts"></div>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+
+  <div id="pause" hidden>
+    <div class="pause-card">
+      <div class="neon">BUTECO FIOTÕES</div>
+      <p>Clique pra voltar ao jogo</p>
+      <small>ESC libera o mouse · Tab abre o placar</small>
+    </div>
+  </div>
+
+  <div id="ranking" class="modal" hidden>
+    <div class="modal-card">
+      <h2>🏆 Placar de hoje</h2>
+      <ol id="rank-list"></ol>
+      <p class="fine">Zera à meia-noite. O servidor confere o tempo de cada cerveja.</p>
+      <button id="rank-close" class="primary small">Fechar</button>
+    </div>
+  </div>
+</section>
+
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/net.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

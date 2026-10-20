@@ -611,6 +611,17 @@ export function createGame({ bar, camera, post, cfg, quality }) {
 
 
 
+  // ---------------- tela sempre ligada (celular) ----------------
+  let wakeLock = null;
+  async function keepAwake() {
+    try {
+      if (!isTouch || !running || wakeLock || document.hidden || !navigator.wakeLock) return;
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { wakeLock = null; /* sem permissão: segue sem */ }
+  }
+  function letSleep() { try { if (wakeLock) wakeLock.release(); } catch (e) { /* ok */ } wakeLock = null; }
+
   // ---------------- pointer lock / entrada ----------------
   function lockNow() { if (!isTouch && running && post.canvas.requestPointerLock) { try { const p = post.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ok */ } } }
   function releaseLock() { if (document.pointerLockElement) document.exitPointerLock(); }
@@ -656,6 +667,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       if (e.code.startsWith('Arrow')) e.preventDefault();
     });
     on(window, 'keyup', (e) => { keys[e.code] = false; if (e.code === 'Space') holdKey = false; });
+    on(document, 'visibilitychange', () => { if (!document.hidden) keepAwake(); });
     on(window, 'blur', () => { for (const k in keys) keys[k] = false; holdKey = holdBtn = holdMouse = false; });
 
     const db = $('btn-drink');
@@ -698,7 +710,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     // olhar com o dedo (celular)
     const lz = $('lookzone');
     let lp = null;
-    on(lz, 'pointerdown', (e) => { if (lp != null) return; lp = { id: e.pointerId, x: e.clientX, y: e.clientY }; lz.setPointerCapture(e.pointerId); FT.audio.init(); closeMenu(); });
+    on(lz, 'pointerdown', (e) => { if (lp != null) return; lp = { id: e.pointerId, x: e.clientX, y: e.clientY }; lz.setPointerCapture(e.pointerId); FT.audio.init(); closeMenu(); keepAwake(); });
     on(lz, 'pointermove', (e) => { if (!lp || e.pointerId !== lp.id) return; yaw -= (e.clientX - lp.x) * 0.0055; pitch = clamp(pitch - (e.clientY - lp.y) * 0.0055, -1.4, 1.4); lp.x = e.clientX; lp.y = e.clientY; });
     const lend = (e) => { if (lp && e.pointerId === lp.id) lp = null; };
     on(lz, 'pointerup', lend); on(lz, 'pointercancel', lend);
@@ -712,7 +724,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       knob.style.transform = `translate(${dx}px,${dy}px)`;
       const m = Math.hypot(dx, dy) / R; joy.x = m < 0.15 ? 0 : dx / R; joy.y = m < 0.15 ? 0 : dy / R;
     };
-    on(joyEl, 'pointerdown', (e) => { e.preventDefault(); FT.audio.init(); joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); moveJoy(e); });
+    on(joyEl, 'pointerdown', (e) => { e.preventDefault(); FT.audio.init(); keepAwake(); joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); moveJoy(e); });
     on(joyEl, 'pointermove', (e) => { if (e.pointerId === joy.id) moveJoy(e); });
     const jend = (e) => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
     on(joyEl, 'pointerup', jend); on(joyEl, 'pointercancel', jend);
@@ -1011,6 +1023,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     running = true;
     bindInput();
     syncPause();
+    keepAwake();
     camera.position.set(me.x, EYE_HEIGHT, me.z);
     camera.rotation.set(0, yaw, 0);
 
@@ -1035,7 +1048,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     music.stop(); $('jukebox').hidden = true; vapingT = 0; pour = null;
     fpClouds.forEach((c) => { c.userData.t = -1; c.material.opacity = 0; }); fpBottle.visible = false; fpStream.visible = false;
     fpPee.visible = false; vm.visible = true; if (me) me.peeing = 0;
-    unbindInput(); releaseLock();
+    unbindInput(); releaseLock(); letSleep();
     players.forEach((p) => { bar.scene.remove(p.av.root); p.av.dispose(); if (p.bottleMesh) bar.takeBottle(p.bottleMesh); }); players.clear();
     if (net) { send({ t: 'sm', v: 0 }); net.close(); net = null; }
     post.setEffects(0, 0, 0, 0);

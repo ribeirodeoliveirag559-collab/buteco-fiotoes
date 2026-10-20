@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14090f">
+  <title>FIOTÕES — o bar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main id="app">
+
+  <!-- ===================== CRIAR PERSONAGEM ===================== -->
+  <section id="screen-create" class="screen">
+    <header class="brand">
+      <h1 class="neon">FIOTÕES</h1>
+      <p>O bar do torneio de cerveja · monte seu personagem</p>
+    </header>
+
+    <div class="creator">
+      <div class="preview-col">
+        <div class="preview-stage"><canvas id="preview" width="320" height="528"></canvas></div>
+        <div class="seg" id="poses">
+          <button data-pose="idle" class="on">Parado</button>
+          <button data-pose="walk">Andando</button>
+          <button data-pose="mug">Bebendo</button>
+          <button data-pose="joint">Fumando</button>
+        </div>
+        <div class="row">
+          <button id="btn-spin" class="ghost">🔄 Virar</button>
+          <button id="btn-random" class="ghost">🎲 Aleatório</button>
+        </div>
+      </div>
+
+      <div class="options-col">
+        <label class="name-field">
+          <span>Seu nome no bar</span>
+          <input id="name" maxlength="14" placeholder="Ex: Gustavo" autocomplete="off" spellcheck="false">
+        </label>
+        <nav class="tabs" id="tabs"></nav>
+        <div id="panel" class="panel"></div>
+      </div>
+    </div>
+
+    <footer class="create-foot">
+      <button id="btn-enter" class="primary" disabled>ENTRAR NO FIOTÕES 🍺</button>
+    </footer>
+  </section>
+
+  <!-- ===================== O BAR ===================== -->
+  <section id="screen-game" class="screen" hidden>
+    <div id="stage"><canvas id="view"></canvas></div>
+
+    <div id="fx-psy"></div>
+    <div id="fx-vignette"></div>
+    <div id="fx-lid-top"></div>
+    <div id="fx-lid-bot"></div>
+
+    <div id="hud">
+      <div class="hud-tl">
+        <span class="mini-logo">FIOTÕES</span>
+        <span id="online" class="pill">👥 1</span>
+        <span id="netmode" class="pill dim"></span>
+      </div>
+
+      <div class="hud-tr">
+        <button id="btn-board" class="round" title="Placar">🏆</button>
+        <button id="btn-chat" class="round touch-only" title="Conversar">💬</button>
+        <button id="btn-sound" class="round" title="Som">🔊</button>
+        <button id="btn-edit" class="round" title="Mudar visual">👕</button>
+      </div>
+
+      <div id="status" class="status">
+        <div class="beer-count"><span id="beer-n">0</span><small>cervejas</small></div>
+        <div class="level"><div id="level-label">Sóbrio</div><div class="bar"><i id="level-bar"></i></div></div>
+      </div>
+
+      <div id="chatlog"></div>
+      <form id="chatform" autocomplete="off">
+        <input id="chatinput" maxlength="80" placeholder="Fale no bar… (Enter)" autocomplete="off">
+        <button type="submit">➤</button>
+      </form>
+
+      <div id="joy" class="touch-only"><div id="joy-knob"></div></div>
+
+      <div class="actions">
+        <button id="btn-smoke" class="smoke" hidden>🚬<span>FUMAR</span></button>
+        <button id="btn-drink" class="drink" style="--p:0">
+          <b>🍺</b><span>SEGURE<br>PRA BEBER</span>
+        </button>
+      </div>
+
+      <div id="hint" class="hint">Clique no chão pra andar · segure <kbd>ESPAÇO</kbd> pra beber · <kbd>Enter</kbd> pra conversar</div>
+
+      <div id="dialog" hidden>
+        <canvas id="dlg-face" width="72" height="72"></canvas>
+        <div class="dlg-body">
+          <div class="dlg-name">???</div>
+          <div id="dlg-text"></div>
+          <div id="dlg-opts"></div>
+        </div>
+      </div>
+
+      <div id="toast"></div>
+    </div>
+
+    <div id="ranking" class="modal" hidden>
+      <div class="modal-card">
+        <h2>🏆 Placar de hoje</h2>
+        <ol id="rank-list"></ol>
+        <p class="fine">Zera à meia-noite. Placar guardado no seu aparelho e compartilhado entre os amigos que estão no bar.</p>
+        <button id="rank-close" class="primary small">Fechar</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/world.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/net.js"></script>
+<script src="js/creator.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

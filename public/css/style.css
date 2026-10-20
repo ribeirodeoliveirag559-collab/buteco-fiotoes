@@ -538,3 +538,9 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 }
 
 #mybubble small { display: block; font-size: 11px; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; color: #b3123f; margin-bottom: 1px; }
+
+
+/* ---------- chat de voz ---------- */
+#btn-voice.on { background: #17613a; border-color: #4be37a; box-shadow: 0 0 0 2px #4be37a66; }
+#btn-voice.mute { background: #5a4310; border-color: var(--amber); }
+#btn-voice.on.speak { box-shadow: 0 0 0 4px #4be37acc, 0 0 18px #4be37a; }

@@ -6,7 +6,8 @@ import { createMusic, parseYouTube } from './music.js';
 import { toTex } from './textures.js';
 import { BAR } from './bar.js';
 import { api } from './api.js';
-import { ic, esc, setIcon } from './ui-icons.js';
+import { ic, esc, setIcon, drawIcon } from './ui-icons.js';
+import { createVoice } from './voice.js';
 
 const FT = window.FT;
 const S = FT.sprites;
@@ -32,6 +33,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   let me = null, running = false, session = null;
   const players = new Map();
   let net = null, locked = false;
+  let voiceTimer = null;
   let rankRows = [], rankDay = '', rankMode = 'online', rankTimer = null, rankSoon = null, lastWinner = null;
   let vipAllowed = false, vipRank = 0;
 
@@ -230,7 +232,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       id, pid: String(m.pid || id).slice(0, 40), name: cleanName(m.n) || 'Alguém', look, av,
       x: clamp(num(m.x, BAR.spawn.x), WX0, WX1), z: clamp(num(m.z, BAR.spawn.z), WZ0, WZ1), ry: num(m.ry, 0),
       vx: 0, vz: 0, rx: 0, rz: 0, rt: 0, beers: clamp(num(m.b, 0) | 0, 0, 999), drunk: clamp(num(m.d, 0), 0, 1),
-      drinking: false, smoking: false, vaping: 0, redUntil: Date.now() + clamp(num(m.rd, 0), 0, 120000), koUntil: 0, lastChat: 0, lastMv: 0,
+      drinking: false, smoking: false, vaping: 0, redUntil: Date.now() + clamp(num(m.rd, 0), 0, 120000), koUntil: 0, lastChat: 0, lastMv: 0, vc: 0,
     };
     adoptMusic(m.mu);
     p.rx = p.x; p.rz = p.z;
@@ -296,6 +298,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       case 'fg': bar.takeFree(Math.floor(num(m.i, -1))); break;
       case 'bp': if (p.bottleMesh) bar.takeBottle(p.bottleMesh); p.bottleMesh = bar.placeBottle({ x: clamp(num(m.x, 0), -10, 18), y: clamp(num(m.y, 1), 0, 2), z: clamp(num(m.z, 0), -7, 7) }); break;
       case 'bt': if (p.bottleMesh) { bar.takeBottle(p.bottleMesh); p.bottleMesh = null; } break;
+      case 'vo': voice.signalIn(m); break;
+      case 'vc': p.vc = m.v ? 1 : 0; break; // este jogador ligou/desligou a voz
       case 'pe': addLog(null, `${p.name} foi ao banheiro`, true, 'droplets'); break;
       case 'vp': p.vaping = 3; p.vapeEmit = false; FT.audio.vape(); break;
       case 'mus': if (typeof m.vid === 'string' && /^[\w-]{11}$/.test(m.vid)) { music.play({ vid: m.vid, t0: num(m.t0, Date.now()), by: String(m.by || '').slice(0, 14) }); addLog(null, `${p.name} colocou uma música na jukebox`, true); } break;
@@ -313,6 +317,29 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   const getMeta = () => ({ pid: me.pid, n: me.name, l: me.look, x: +me.x.toFixed(2), z: +me.z.toFixed(2), ry: +yaw.toFixed(2), b: me.beers, d: +drunkLevel().toFixed(2), rd: Math.max(0, me.redUntil - Date.now()), mu: music.current ? [music.current.vid, music.current.t0, music.current.by] : null });
   let metaTimer = null;
   const pushMeta = () => { clearTimeout(metaTimer); metaTimer = setTimeout(() => net && net.setMeta(getMeta()), 500); };
+
+  // ---------------- chat de voz (por proximidade) ----------------
+  const turnServers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }].concat(cfg && cfg.turn ? [cfg.turn] : []);
+  const voice = createVoice({
+    sid, iceServers: turnServers, toast,
+    signal: (o) => send(Object.assign({ t: 'vo' }, o)),
+    onState: (s) => {
+      const b = $('btn-voice'); setIcon(b, s === 'on' ? 'mic' : 'mic-off');
+      b.classList.toggle('on', s === 'on'); b.classList.toggle('mute', s === 'muted');
+      send({ t: 'vc', v: s === 'off' ? 0 : 1 });
+      b.title = s === 'off' ? 'Ligar chat de voz (V)' : s === 'on' ? 'Microfone ligado — toque pra silenciar' : 'Microfone mudo — toque pra desligar a voz';
+    },
+  });
+  // ícone de microfone verde sobre a cabeça de quem está falando
+  const micTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#25b25a'; g.beginPath(); g.arc(64, 64, 58, 0, 7); g.fill(); g.lineWidth = 6; g.strokeStyle = '#ffffffee'; g.stroke(); drawIcon(g, 'mic', 28, 28, 72, '#ffffff', 2.4); return new THREE.CanvasTexture(c); })();
+  function setSpeakIcon(p, on) {
+    if (on && !p.speakSprite) {
+      p.speakSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: micTex, transparent: true, depthWrite: false }));
+      p.speakSprite.scale.set(0.3, 0.3, 1); p.speakSprite.position.set(0, 2.32, 0); p.speakSprite.renderOrder = 12;
+      p.av.root.add(p.speakSprite);
+    }
+    if (p.speakSprite) { p.speakSprite.visible = on; if (on) p.speakSprite.scale.setScalar(0.3 + Math.sin(performance.now() / 120) * 0.025); }
+  }
 
   // ---------------- cerveja: pedir -> servir -> beber ----------------
   let drinkT = 0, drinkDur = DRINK_MS, drinkingNow = false, gulpT = 0, lastHint = 0;
@@ -662,6 +689,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       if (e.code === 'Space') { e.preventDefault(); holdKey = true; return; }
       if (e.code === 'KeyE') { interact(); return; }
       if (e.code === 'KeyF') { useVape(); return; }
+      if (e.code === 'KeyV') { FT.audio.init(); voice.toggleMute(); return; }
       if (e.code === 'KeyG') { putDownBottle(); return; }
       keys[e.code] = true;
       if (e.code.startsWith('Arrow')) e.preventDefault();
@@ -688,6 +716,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     const closeMenu = () => { $('hud-tr').classList.remove('open'); $('btn-menu').setAttribute('aria-expanded', 'false'); };
     on($('btn-menu'), 'click', () => { const o = $('hud-tr').classList.toggle('open'); $('btn-menu').setAttribute('aria-expanded', String(o)); });
     on($('hud-tr'), 'click', (e) => { if (e.target.closest('.round') && !e.target.closest('#btn-menu')) setTimeout(closeMenu, 0); });
+    on($('btn-voice'), 'click', () => { FT.audio.init(); voice.cycle(); });
     on($('btn-board'), 'click', openRanking);
     const runDiag = async () => { $('netdiag-text').textContent = 'Testando…'; const t = await FT.netDiag({ SUPABASE_URL: cfg.supabaseUrl, SUPABASE_ANON_KEY: cfg.supabaseAnonKey }); $('netdiag-text').textContent = t; };
     on($('netmode'), 'click', () => { releaseLock(); $('netdiag').hidden = false; runDiag(); });
@@ -955,6 +984,11 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       if (st.smoke && Math.random() < dt * 1.2) { /* fumaça de terceiros é discreta */ }
     });
 
+    // voz por proximidade + ícone de "falando" sobre a cabeça
+    voice.tick(dt, me, yaw, Array.from(players.values()));
+    players.forEach((p) => { setSpeakIcon(p, voice.speaking(p.id)); });
+    $('btn-voice').classList.toggle('speak', voice.mySpeaking);
+
     // alvo de interação (garrafa, Bella, homem, jukebox, porta do camarote)
     target = computeTarget();
     const ni = npcInfo();
@@ -1044,18 +1078,20 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       setTimeout(() => say(`PARABÉNS! Você foi o campeão do dia ${sess.notice.day} com ${sess.notice.beers} copos! Ganhou um cigarro eletrônico com 20 tragadas. Aperte F (ou o botão) pra usar!`, [{ label: 'Eba!', fn: closeDialog }]), 800);
     }
     refreshRanking(); rankTimer = setInterval(refreshRanking, 10000);
+    voiceTimer = setInterval(() => { if (voice.state !== 'off') send({ t: 'vc', v: 1 }); }, 4000);
     lockNow();
   }
   function stop() {
     running = false;
     try { localStorage.setItem('buteco:bac:' + me.pid, JSON.stringify({ d: new Date().toDateString(), v: me.bac, t: Date.now() })); } catch (e) { /* ok */ }
-    clearInterval(rankTimer); clearTimeout(rankSoon);
+    clearInterval(rankTimer); clearTimeout(rankSoon); clearInterval(voiceTimer);
     if (me.bottleMesh) { bar.takeBottle(me.bottleMesh); me.bottleMesh = null; }
     me.bottleLoc = null; armPivotL.visible = false;
     music.stop(); $('jukebox').hidden = true; vapingT = 0; pour = null;
     fpClouds.forEach((c) => { c.userData.t = -1; c.material.opacity = 0; }); fpBottle.visible = false; fpStream.visible = false;
     fpPee.visible = false; vm.visible = true; if (me) me.peeing = 0;
     unbindInput(); releaseLock(); letSleep();
+    voice.stop();
     players.forEach((p) => { bar.scene.remove(p.av.root); p.av.dispose(); if (p.bottleMesh) bar.takeBottle(p.bottleMesh); }); players.clear();
     if (net) { send({ t: 'sm', v: 0 }); net.close(); net = null; }
     post.setEffects(0, 0, 0, 0);
@@ -1065,7 +1101,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   window.addEventListener('beforeunload', () => { if (me && running) { try { localStorage.setItem('buteco:bac:' + me.pid, JSON.stringify({ d: new Date().toDateString(), v: me.bac, t: Date.now() })); } catch (e) { /* ok */ } } });
 
   const debug = {
-    get bar() { return bar; }, get camera() { return camera; },
+    get bar() { return bar; }, get camera() { return camera; }, get voice() { return voice; },
     get me() { return me; }, players, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, set pitch(v) { pitch = v; },
     set bac(v) { me.bac = v; }, finishBeer, orderBeer, pourBeer, useVape, get target() { return target; }, get vipAllowed() { return vipAllowed; }, music, startSmoking, endSmoking, get drunk() { return drunkVis; }, get psy() { return psyVis; },
     teleport(x, z) { me.x = x; me.z = z; }, tick(n, dt) { for (let i = 0; i < n; i++) update(dt || 0.05, performance.now() / 1000); },

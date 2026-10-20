@@ -29,3 +29,9 @@ create table if not exists daily_winners (
   seen boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- v2.2: contas com senha
+alter table players add column if not exists name_key text;
+alter table players add column if not exists pass_salt text;
+alter table players add column if not exists pass_hash text;
+create unique index if not exists players_name_key_uidx on players (name_key) where name_key is not null;

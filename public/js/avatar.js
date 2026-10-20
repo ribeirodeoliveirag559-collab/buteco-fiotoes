@@ -1,6 +1,7 @@
 // Avatar 3D em blocos. As texturas vêm do mesmo gerador de pixel art usado nas miniaturas
 // (sprites.js), então o que você escolhe no guarda-roupa é exatamente o que aparece no bar.
 import * as THREE from 'three';
+import { rbox } from './shapes.js';
 import { toTex, straw, noise } from './textures.js';
 
 const FT = window.FT;
@@ -76,7 +77,7 @@ export function makeBottle() {
 }
 export function makeVape() {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.115, 0.018), new THREE.MeshStandardMaterial({ color: 0x1b1d26, roughness: 0.3, metalness: 0.6 }));
+  const body = new THREE.Mesh(rbox(0.03, 0.115, 0.018), new THREE.MeshStandardMaterial({ color: 0x1b1d26, roughness: 0.3, metalness: 0.6 }));
   const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.028, 8), new THREE.MeshStandardMaterial({ color: 0xcfd6e0, metalness: 0.7, roughness: 0.3 })); tip.position.y = 0.07;
   const led = new THREE.Mesh(new THREE.SphereGeometry(0.0075, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(0x35e0ff).multiplyScalar(2.2) })); led.position.set(0, -0.045, 0.01);
   g.add(body, tip, led);
@@ -109,7 +110,7 @@ export function hatMesh(id) {
     bandM.position.y = bandH / 2 + 0.01;
     const items = [crown, brim, bandM];
     if (gold) {
-      const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.012), new THREE.MeshStandardMaterial({ color: 0xe8c040, metalness: 0.8, roughness: 0.3 }));
+      const buckle = new THREE.Mesh(rbox(0.06, 0.05, 0.012), new THREE.MeshStandardMaterial({ color: 0xe8c040, metalness: 0.8, roughness: 0.3 }));
       buckle.position.set(0, bandH / 2 + 0.01, 0.2);
       items.push(buckle);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.372, 0.007, 6, 40), new THREE.MeshStandardMaterial({ color: 0xe8c040, metalness: 0.8, roughness: 0.3 }));
@@ -141,7 +142,7 @@ function hairMeshes(id, color) {
   const m = lam({ color, map: toTex(noise(color, 0.2), { nearest: true }) });
   const H = HEAD;
   const add = (w, h, d, x, y, z, rx = 0) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    const b = new THREE.Mesh(rbox(w, h, d), m);
     b.position.set(x, y, z); b.rotation.x = rx; b.castShadow = true; out.push(b);
   };
   switch (id) {
@@ -217,7 +218,7 @@ export function createAvatar(lookIn, opts = {}) {
 
     // cabeça
     const headMats = [mkMat(sideC), mkMat(sideC), mkMat(topC), mkMat(skinC), mkMat(faceFront), mkMat(faceBack)];
-    const head = new THREE.Mesh(track(new THREE.BoxGeometry(HEAD, HEAD, HEAD)), headMats);
+    const head = new THREE.Mesh(track(rbox(HEAD, HEAD, HEAD)), headMats);
     head.castShadow = true;
     const headG = new THREE.Group();
     headG.position.y = LEG_H + TORSO_H + NECK + HEAD / 2;
@@ -230,13 +231,13 @@ export function createAvatar(lookIn, opts = {}) {
     P.head = headG;
 
     // pescoço
-    const neck = new THREE.Mesh(track(new THREE.BoxGeometry(0.16, NECK + 0.02, 0.14)), mkMat(skinC));
+    const neck = new THREE.Mesh(track(rbox(0.16, NECK + 0.02, 0.14)), mkMat(skinC));
     neck.position.y = LEG_H + TORSO_H + NECK / 2;
     model.add(neck);
 
     // tronco (camisa + cós da calça)
     const torsoMats = [mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(shirtC), mkMat(torsoF), mkMat(torsoB)];
-    const torso = new THREE.Mesh(track(new THREE.BoxGeometry(TORSO_W, TORSO_H, TORSO_D)), torsoMats);
+    const torso = new THREE.Mesh(track(rbox(TORSO_W, TORSO_H, TORSO_D)), torsoMats);
     torso.position.y = LEG_H + TORSO_H / 2; torso.castShadow = true;
     model.add(torso);
     P.torso = torso;
@@ -250,7 +251,7 @@ export function createAvatar(lookIn, opts = {}) {
     }
     // casaco comprido (HOMEM)
     if (look.shirt === 'sobretudo') {
-      const coat = new THREE.Mesh(track(new THREE.BoxGeometry(TORSO_W + 0.04, 0.55, TORSO_D + 0.05)), mkMat('#2c2824'));
+      const coat = new THREE.Mesh(track(rbox(TORSO_W + 0.04, 0.55, TORSO_D + 0.05)), mkMat('#2c2824'));
       coat.position.y = LEG_H - 0.2; coat.castShadow = true;
       model.add(coat);
     }
@@ -259,7 +260,7 @@ export function createAvatar(lookIn, opts = {}) {
     const mkArm = (x0, sx) => {
       const ac = crop(down, x0, 28, 5, 21);
       const am = mkMat(ac);
-      const geo = track(new THREE.BoxGeometry(ARM_W, ARM_L, ARM_W));
+      const geo = track(rbox(ARM_W, ARM_L, ARM_W));
       geo.translate(0, -ARM_L / 2, 0);
       const arm = new THREE.Mesh(geo, [am, am, mkMat(shirtC), mkMat(skinC), am, am]);
       arm.castShadow = true;
@@ -287,7 +288,7 @@ export function createAvatar(lookIn, opts = {}) {
       const lb = crop(up, x0, 51, 8, 13);
       const lm = mkMat(lc), bm = mkMat(lb);
       const sideCol = sample(lc, 0, 3);
-      const geo = track(new THREE.BoxGeometry(LEG_W, LEG_H, 0.22));
+      const geo = track(rbox(LEG_W, LEG_H, 0.22));
       geo.translate(0, -LEG_H / 2, 0);
       const sm = mkMat(sideCol);
       const leg = new THREE.Mesh(geo, [sm, sm, sm, sm, lm, bm]);
@@ -297,7 +298,7 @@ export function createAvatar(lookIn, opts = {}) {
       pivot.add(leg);
       // pé
       const f = FOOT[look.shoes] || FOOT.americana;
-      const fg = track(new THREE.BoxGeometry(f.w, f.h, f.l));
+      const fg = track(rbox(f.w, f.h, f.l));
       if (f.taper < 1) {
         const pos = fg.attributes.position;
         for (let i = 0; i < pos.count; i++) if (pos.getZ(i) > 0) pos.setX(i, pos.getX(i) * f.taper);
@@ -308,9 +309,9 @@ export function createAvatar(lookIn, opts = {}) {
       foot.castShadow = true;
       pivot.add(foot);
       if (f.skin) {
-        const sk = new THREE.Mesh(track(new THREE.BoxGeometry(f.w * 0.85, 0.05, f.l * 0.85)), mkMat(skinC));
+        const sk = new THREE.Mesh(track(rbox(f.w * 0.85, 0.05, f.l * 0.85)), mkMat(skinC));
         sk.position.set(0, -LEG_H + f.h + 0.02, f.l / 2 - 0.1); pivot.add(sk);
-        const strap = new THREE.Mesh(track(new THREE.BoxGeometry(f.w * 0.95, 0.025, 0.07)), mkMat(f.strap));
+        const strap = new THREE.Mesh(track(rbox(f.w * 0.95, 0.025, 0.07)), mkMat(f.strap));
         strap.position.set(0, -LEG_H + f.h + 0.05, 0.05); pivot.add(strap);
       }
       model.add(pivot);
@@ -321,7 +322,7 @@ export function createAvatar(lookIn, opts = {}) {
     if (opts.curvy) {
       P.legL.scale.x = P.legR.scale.x = 1.22; P.legL.position.x = 0.16; P.legR.position.x = -0.16;
       torso.scale.set(1.0, 1.0, 1.0);
-      const hips = new THREE.Mesh(track(new THREE.BoxGeometry(TORSO_W * 1.2, 0.16, TORSO_D * 1.2)), mkMat(sample(crop(down, 11, 46, 18, 5), 4, 2)));
+      const hips = new THREE.Mesh(track(rbox(TORSO_W * 1.2, 0.16, TORSO_D * 1.2)), mkMat(sample(crop(down, 11, 46, 18, 5), 4, 2)));
       hips.position.y = LEG_H + 0.02; hips.castShadow = true; model.add(hips);
       headG.scale.setScalar(0.94);
     }

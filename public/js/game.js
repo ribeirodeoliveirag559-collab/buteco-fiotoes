@@ -1,5 +1,6 @@
 // Jogo em primeira pessoa: movimento, câmera, cerveja, baseado, HOMEM, chat, multiplayer.
 import * as THREE from 'three';
+import { rbox } from './shapes.js';
 import { createAvatar, EYE_HEIGHT, lookColors, makeMug, makeJoint, makeBottle, makeVape } from './avatar.js';
 import { createMusic, parseYouTube } from './music.js';
 import { toTex } from './textures.js';
@@ -19,7 +20,7 @@ const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
 const SPEED = 3.1;
 const DRINK_MS = 5000;
-const KO_BAC = 24;
+const MAX_BAC = 20; // a partir daqui o personagem cai e levanta sem parar até o nível baixar
 
 export function createGame({ bar, camera, post, cfg, quality }) {
   const sid = uid();
@@ -37,6 +38,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
 
   // efeitos
   let drunkVis = 0, psyVis = 0, psyStart = 0, psyEnd = 0, bobPhase = 0, camRoll = 0;
+  let fallT = 4, stumbleT = 4, camYs = EYE_HEIGHT, koPitch = 0, lidKo = 0, camKick = 0;
 
   // ---------------- modelo em primeira pessoa (braço + caneca) ----------------
   const vm = new THREE.Group();
@@ -59,7 +61,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (armMesh) { armPivot.remove(armMesh); armMesh.geometry.dispose(); }
     const col = lookColors(look);
     const tex = toTex(col.armCanvas, { nearest: true });
-    const geo = new THREE.BoxGeometry(0.075, 0.42, 0.075); geo.translate(0, -0.21, 0);
+    const geo = rbox(0.075, 0.42, 0.075); geo.translate(0, -0.21, 0);
     const side = new THREE.MeshLambertMaterial({ map: tex });
     armMesh = new THREE.Mesh(geo, [side, side, new THREE.MeshLambertMaterial({ color: col.shirt }), new THREE.MeshLambertMaterial({ color: col.skin }), side, side]);
     armPivot.add(armMesh);
@@ -119,7 +121,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     setTimeout(() => d.remove(), 16000);
   }
   function updateOnline() { $('online').textContent = '👥 ' + (players.size + 1); }
-  function levelLabel(b) { return b < 3 ? 'Sóbrio' : b < 6 ? 'Alegrinho' : b < 9 ? 'Animado' : b < 12 ? 'Bêbado 🥴' : b < 16 ? 'Muito bêbado' : b < 21 ? 'Chapado' : 'Quase apagando 😵'; }
+  function levelLabel(b) { return b < 3 ? 'Sóbrio' : b < 6 ? 'Alegrinho' : b < 9 ? 'Animado' : b < 12 ? 'Tropeçando 🥴' : b < 16 ? 'Muito bêbado' : b < MAX_BAC ? 'Chapado' : 'Caindo de bêbado 😵'; }
   function updateStatus() {
     $('beer-n').textContent = me.beers;
     $('pts-n').textContent = me.points;
@@ -127,7 +129,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     $('vape-chip').hidden = me.vape <= 0;
     $('btn-vape').hidden = me.vape <= 0;
     $('level-label').textContent = levelLabel(me.bac);
-    $('level-bar').style.width = clamp((me.bac / KO_BAC) * 100, 0, 100) + '%';
+    $('level-bar').style.width = clamp((me.bac / MAX_BAC) * 100, 0, 100) + '%';
   }
   function setNetLabel(s) {
     const el = $('netmode');
@@ -372,7 +374,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     updateStatus(); FT.audio.burp();
     send({ t: 'bw', b: me.beers, d: +drunkLevel().toFixed(2) });
     milestone(me.name, me.beers, true);
-    if (me.bac >= KO_BAC) knockOut();
+    if (me.bac >= MAX_BAC && !isKO()) startFall();
     pushMeta();
     if (session.offline) { try { localStorage.setItem('buteco:offline:' + new Date().toDateString(), String(me.beers)); } catch (e) { /* ok */ } }
     const r = await barAct('finish');
@@ -380,11 +382,14 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     else if (r && r.ok === false) { applyState(r); me.bac = Math.max(0, me.bac - 1); toast(r.reason === 'rapido' ? 'Calma! O barman não deixou beber tão rápido 🍺' : 'Esse copo não valeu ponto 🤔'); }
     refreshRanking();
   }
-  function knockOut() {
-    me.koUntil = Date.now() + 10000; me.bac = Math.max(0, me.bac - 6);
+  // queda de bêbado: fica no chão uns segundos e levanta; repete enquanto o nível estiver no máximo
+  function startFall() {
+    me.koUntil = Date.now() + 2800;
     drinkingNow = false; me.drinking = false; drinkT = 0;
-    send({ t: 'dr', v: 0 }); send({ t: 'ko', ms: 10000 }); FT.audio.thud();
-    toast('Você apagou! 😵💤');
+    send({ t: 'dr', v: 0 }); send({ t: 'ko', ms: 2800 }); FT.audio.thud();
+    fallT = rnd(5, 8);
+    if (!startFall.warned) { startFall.warned = true; toast('Você tá caindo de bêbado! Para de beber e espera baixar 😵'); }
+    else if (Math.random() < 0.4) toast(['Ops, caiu de novo! 🤕', 'Levanta que você consegue 😵‍💫', 'O chão é seu amigo 🥴'][Math.floor(Math.random() * 3)]);
   }
 
   // ---------------- HOMEM / baseado ----------------
@@ -628,9 +633,24 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   function update(dt, t) {
     if (!running) return;
     const ko = isKO();
-    if (me.koWas && !ko) { toast('Você acordou 🥴'); }
+    if (me.koWas && !ko && me.bac < MAX_BAC) { toast('Você levantou 🥴'); }
     me.koWas = ko;
     const dl = drunkLevel();
+
+    // embriaguez: tropeços (a partir de ~12 copos) e quedas (nível máximo)
+    if (!ko && !me.smoking && !dialogOpen()) {
+      if (me.bac >= 12) {
+        stumbleT -= dt;
+        if (stumbleT <= 0) {
+          stumbleT = rnd(2.2, 4.5) / (0.4 + dl);
+          const a = rnd(-1, 1);
+          me.vx += Math.cos(yaw) * a * 2.4; me.vz += -Math.sin(yaw) * a * 2.4;
+          camKick = a * 0.3; FT.audio.hic();
+        }
+      }
+      if (me.bac >= MAX_BAC) { fallT -= dt; if (fallT <= 0) startFall(); } else fallT = rnd(2, 4);
+    }
+    camKick -= camKick * Math.min(1, dt * 2.5);
 
     // movimento
     let f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
@@ -641,6 +661,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       const w = Math.sin(t * 2.1) * dl * 0.8 + Math.sin(t * 5.7) * dl * 0.3;
       const c = Math.cos(w), sn = Math.sin(w), nf = f * c - s * sn; s = f * sn + s * c; f = nf;
     }
+    if (dl > 0.15 && !ko && !dialogOpen() && !me.smoking) s += Math.sin(t * 1.3) * dl * 0.6 + Math.sin(t * 3.1) * dl * 0.25; // deriva de bêbado (anda torto)
     const sprint = keys.ShiftLeft || keys.ShiftRight ? 1.45 : 1;
     const speed = SPEED * sprint * (drinkingNow ? 0.55 : 1) * (1 - dl * 0.22);
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
@@ -680,14 +701,15 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     // câmera
     const bob = Math.sin(bobPhase) * 0.035 * Math.min(1, sp / 2);
     const bobX = Math.cos(bobPhase * 0.5) * 0.02 * Math.min(1, sp / 2);
-    let camY = EYE_HEIGHT + bob;
-    if (ko) camY = 0.4;
+    camYs += ((ko ? 0.3 : EYE_HEIGHT + bob) - camYs) * Math.min(1, dt * (ko ? 9 : 3.2));
+    const camY = camYs;
+    koPitch += ((ko ? 1.1 : 0) - koPitch) * Math.min(1, dt * (ko ? 8 : 3));
     camera.position.set(me.x + Math.cos(yaw) * bobX, camY, me.z - Math.sin(yaw) * bobX);
     const sway = dl * (Math.sin(t * 0.9) * 0.05 + Math.sin(t * 2.3) * 0.02);
     const dPitch = dl * Math.sin(t * 0.7) * 0.05 + vmPose.lift * 0.28;
     camera.rotation.order = 'YXZ';
-    camRoll += ((ko ? 0.9 : sway) - camRoll) * Math.min(1, dt * 4);
-    camera.rotation.set(clamp(pitch + dPitch + (ko ? 1.1 : 0), -1.5, 1.5), yaw + dl * Math.sin(t * 0.5) * 0.06, camRoll);
+    camRoll += ((ko ? 0.9 : sway + camKick) - camRoll) * Math.min(1, dt * (ko ? 8 : 4));
+    camera.rotation.set(clamp(pitch + dPitch + koPitch, -1.5, 1.5), yaw + dl * Math.sin(t * 0.5) * 0.06, camRoll);
 
     // modelo em 1ª pessoa
     vmPose.lift += ((me.drinking ? 1 : 0) - vmPose.lift) * Math.min(1, dt * 7);
@@ -823,7 +845,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (psyVis < 0.004) psyVis = 0;
     let lid = 0;
     if (drunkVis > 0.5) lid = (drunkVis - 0.5) * 2 * 0.5 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.9 + Math.sin(t * 0.3) * 2), 3);
-    if (ko) lid = 0.95;
+    lidKo += ((ko ? 0.95 : 0) - lidKo) * Math.min(1, dt * (ko ? 10 : 2.5));
+    lid = Math.max(lid, lidKo);
     post.setEffects(t, drunkVis, psyVis, lid);
     camera.fov = 72 + clamp(1.2 - camera.aspect, 0, 0.8) * 30 + psyVis * 8 * Math.sin(t * 0.8) + drunkVis * 3;
     camera.updateProjectionMatrix();
@@ -849,6 +872,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     drinkT = 0; drinkingNow = false; holdBtn = holdKey = holdMouse = false; pour = null; vapingT = 0; vapeCloudDone = true; vipAllowed = false; vipRank = 0; bar.setVipOpen(false);
     me.bottleLoc = me.bottle ? 'hand' : null;
     drunkVis = Math.min(1, drunkLevel()); psyVis = 0; psyEnd = 0;
+    fallT = 4; stumbleT = 4; camYs = EYE_HEIGHT; koPitch = 0; lidKo = 0; camKick = 0;
     update._start = 0;
     players.clear();
     $('chatlog').innerHTML = ''; $('btn-smoke').hidden = true; $('dialog').hidden = true; $('ranking').hidden = true; $('hint').classList.remove('gone'); $('prompt').hidden = true;

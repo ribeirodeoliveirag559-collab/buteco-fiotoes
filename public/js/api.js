@@ -14,6 +14,7 @@ async function call(path, body) {
 export const api = {
   config: () => call('/api/config'),
   join: (b) => call('/api/join', b),
+  auth: (b) => call('/api/auth', b),
   drink: (b) => call('/api/drink', b),
   ranking: () => call('/api/ranking'),
   shop: (b) => call('/api/shop', b),

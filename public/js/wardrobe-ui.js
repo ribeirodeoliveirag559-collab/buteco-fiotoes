@@ -101,6 +101,7 @@ export function initWardrobeUI(h) {
     if (name.length < 2) return;
     h.onEnter({ name, look: S.sanitizeLook(look) });
   };
+  $('btn-logout').onclick = () => h.onLogout && h.onLogout();
   $('drawer-toggle').onclick = () => { $('drawer').classList.toggle('open'); h.onDrawer && h.onDrawer(); };
   $('drawer-head').onclick = () => { if (window.innerWidth <= 820) { $('drawer').classList.remove('open'); h.onDrawer && h.onDrawer(); } };
 
@@ -108,6 +109,7 @@ export function initWardrobeUI(h) {
     show(profile) {
       look = S.sanitizeLook((profile && profile.look) || S.randomLook());
       $('name').value = (profile && profile.name) || '';
+      $('drawer-head').firstChild.textContent = 'GUARDA-ROUPA' + (profile && profile.name ? ' · ' + profile.name.toUpperCase() : '');
       buildTabs(); buildPanel(); checkName();
       h.onLook(look);
     },

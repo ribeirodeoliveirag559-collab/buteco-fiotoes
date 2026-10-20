@@ -19,6 +19,43 @@
 
 <div id="loading"><div class="neon">FIOTÕES</div><p>acendendo as luzes…</p></div>
 
+<!-- ===================== PÁGINA INICIAL ===================== -->
+<section id="screen-home" class="screen" hidden>
+  <div class="home-wrap">
+    <div class="home-card">
+      <h1 class="neon">BUTECO FIOTÕES</h1>
+      <p class="home-sub">O bar do torneio de cerveja 🍺</p>
+
+      <div id="home-continue" hidden>
+        <p class="home-hello">Bem-vindo de volta,<br><b id="home-name"></b>!</p>
+        <button id="btn-continue" class="primary">CONTINUAR 🍺</button>
+        <button id="btn-switch" class="linkbtn">Entrar com outra conta</button>
+      </div>
+
+      <form id="home-form" onsubmit="return false" autocomplete="on">
+        <div class="seg" id="auth-tabs">
+          <button type="button" data-m="login" class="on">Entrar</button>
+          <button type="button" data-m="register">Criar conta</button>
+        </div>
+        <label class="fld"><span>Nome</span>
+          <input id="auth-name" maxlength="14" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="Seu nome no buteco">
+        </label>
+        <label class="fld"><span>Senha</span>
+          <span class="pw">
+            <input id="auth-pass" type="password" maxlength="40" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="mínimo 3 caracteres">
+            <button type="button" id="auth-eye" aria-label="Mostrar senha">👁</button>
+          </span>
+        </label>
+        <button type="button" id="btn-auth" class="primary">ENTRAR</button>
+        <p id="auth-hint" class="fine"></p>
+        <div id="auth-error" class="auth-error"></div>
+      </form>
+
+      <p class="fine small">Jogo para maiores de 18 anos. Beba com moderação, na vida real também. 🍻</p>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== GUARDA-ROUPA ===================== -->
 <section id="screen-wardrobe" class="screen" hidden>
   <header class="brand">
@@ -31,7 +68,7 @@
     <div class="drawer-head" id="drawer-head">GUARDA-ROUPA</div>
     <label class="name-field">
       <span>Seu nome no buteco</span>
-      <input id="name" maxlength="14" placeholder="Ex: Gustavo" autocomplete="off" spellcheck="false">
+      <input id="name" maxlength="14" readonly autocomplete="off" spellcheck="false">
     </label>
     <nav class="tabs" id="tabs"></nav>
     <div id="panel" class="panel"></div>
@@ -47,6 +84,7 @@
     </div>
     <button id="btn-enter" class="primary" disabled>ENTRAR NO BUTECO 🍺</button>
     <div id="enter-error" class="fine"></div>
+    <button id="btn-logout" class="linkbtn" type="button">Sair da conta</button>
   </aside>
   <div class="drag-hint">arraste pra girar o personagem</div>
 </section>

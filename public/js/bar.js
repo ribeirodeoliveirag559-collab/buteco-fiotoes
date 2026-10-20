@@ -1,5 +1,6 @@
 // O bar em 3D: salão, balcão, mesas, luminárias com sombra, placar, jukebox e o canto escondido.
 import * as THREE from 'three';
+import { rbox } from './shapes.js';
 import * as TX from './textures.js';
 import { createAvatar, makeMug, makeBottle } from './avatar.js';
 
@@ -9,7 +10,7 @@ export const BAR = {
   half: { x: 9.6, zMin: -6.55, zMax: 6.6 },
   spawn: { x: 3.2, z: 5.6 },
   npcPos: { x: -8.6, z: 5.4 },
-  poster: { x: 5.6, y: 1.95, z: -6.93, w: 5.4, h: 2.6 },
+  poster: { x: 5.6, y: 1.95, z: -6.82, w: 5.4, h: 2.6 },
   maidPos: { x: -4.6, z: -6.55 },
   serviceTable: { x: -0.35, z: -5.15 },
   jukebox: { x: 9.2, z: -3.2 },
@@ -33,7 +34,7 @@ export function createBar(quality = 'high') {
   const M = (map, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ map, roughness: 0.85, metalness: 0.0 }, o));
   const L = (o) => new THREE.MeshLambertMaterial(o);
   const box = (w, h, d, mat, x, y, z, parent = root, shadow = true) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    const m = new THREE.Mesh(rbox(w, h, d), mat);
     m.position.set(x, y, z); m.castShadow = shadow; m.receiveShadow = true;
     parent.add(m); return m;
   };
@@ -61,9 +62,9 @@ export function createBar(quality = 'high') {
     up.position.y = 1.15 + 1.2; g.add(up);
     const lo = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.2), M(panelT));
     lo.position.y = 0.6; lo.receiveShadow = true; g.add(lo);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.1), M(woodTex));
+    const rail = new THREE.Mesh(rbox(w, 0.08, 0.1), M(woodTex));
     rail.position.set(0, 1.22, 0.04); g.add(rail);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, 0.06), M(woodTex));
+    const base = new THREE.Mesh(rbox(w, 0.14, 0.06), M(woodTex));
     base.position.set(0, 0.07, 0.03); g.add(base);
     g.position.set(x, 0, z); g.rotation.y = ry;
     up.receiveShadow = true;
@@ -120,7 +121,7 @@ export function createBar(quality = 'high') {
   for (let i = 0; i < 5; i++) {
     const x = cx - 2.2 + i * 0.55;
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 10), brass); tower.position.set(x, 1.28, -5.95); tower.castShadow = true; root.add(tower);
-    const spout = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.12), brass); spout.position.set(x, 1.4, -5.88); root.add(spout);
+    const spout = new THREE.Mesh(rbox(0.04, 0.04, 0.12), brass); spout.position.set(x, 1.4, -5.88); root.add(spout);
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), new THREE.MeshStandardMaterial({ color: [0xd33, 0x3377aa, 0x33aa44, 0xddaa33, 0x8844aa][i] })); handle.position.set(x, 1.52, -5.95); root.add(handle);
   }
   for (const x of [-8.4, -3.3, -2.6, -1.9]) { const m = makeMug(); m.position.set(x, 1.19, -5.55); m.scale.setScalar(1.1); root.add(m); }
@@ -190,7 +191,7 @@ export function createBar(quality = 'high') {
   const P = BAR.poster;
   const pc = document.createElement('canvas'); pc.width = 1024; pc.height = 492;
   const pTex = TX.toTex(pc); pTex.anisotropy = 8;
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(P.w + 0.3, P.h + 0.3, 0.06), M(woodTex));
+  const frame = new THREE.Mesh(rbox(P.w + 0.3, P.h + 0.3, 0.06), M(woodTex));
   frame.position.set(P.x, P.y, P.z - 0.03); frame.castShadow = true; root.add(frame);
   const posterMesh = new THREE.Mesh(new THREE.PlaneGeometry(P.w, P.h), new THREE.MeshStandardMaterial({ map: pTex, roughness: 0.9, emissive: 0xffffff, emissiveMap: pTex, emissiveIntensity: 0.42 }));
   posterMesh.position.set(P.x, P.y, P.z + 0.005); root.add(posterMesh);
@@ -229,8 +230,8 @@ export function createBar(quality = 'high') {
     });
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#5a4020'; g.font = '800 23px Nunito, sans-serif';
-    g.fillText('⭐ TOP 5 entra no CAMAROTE · campeão do dia ganha um vape 💨', 512, 448);
-    if (lastWinner) { g.fillStyle = '#7a1c1c'; g.font = '900 26px Nunito, sans-serif'; g.fillText('🏆 Campeão de ' + lastWinner.day + ': ' + lastWinner.name + ' (' + lastWinner.beers + ' copos)', 512, 476); }
+    g.fillText('⭐ TOP 5 entra no CAMAROTE · campeão do dia ganha um vape 💨', 512, 428);
+    if (lastWinner) { g.fillStyle = '#7a1c1c'; g.font = '900 26px Nunito, sans-serif'; g.fillText('🏆 Campeão de ' + lastWinner.day + ': ' + lastWinner.name + ' (' + lastWinner.beers + ' copos)', 512, 456); }
     if (mode === 'offline') { g.fillStyle = 'rgba(90,64,32,.7)'; g.font = '700 20px Nunito'; g.fillText('(placar local — sem conexão com o servidor)', 512, 150); }
     pTex.needsUpdate = true;
   }
@@ -240,7 +241,7 @@ export function createBar(quality = 'high') {
   const wp = (title, sub, c1, c2, x, y, z, ry) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.3), new THREE.MeshStandardMaterial({ map: TX.toTex(TX.wallPoster(title, sub, c1, c2, x * 7)), roughness: 0.9 }));
     m.position.set(x, y, z); m.rotation.y = ry; root.add(m);
-    const fr = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.38, 0.04), M(woodTex)); fr.position.set(x, y, z - (Math.cos(ry) * 0.02)); fr.rotation.y = ry; root.add(fr);
+    const fr = new THREE.Mesh(rbox(0.98, 1.38, 0.04), M(woodTex)); fr.position.set(x, y, z - (Math.cos(ry) * 0.02)); fr.rotation.y = ry; root.add(fr);
   };
   wp('MODÃO RAIZ', 'sexta tem!', '#3a1a5a', '#a02a4a', 9.96, 1.9, 3.4, -Math.PI / 2);
   wp('CERVEJA GELADA', 'sempre', '#0a4a6a', '#2aa0b0', 9.96, 1.9, 5.3, -Math.PI / 2);
@@ -255,8 +256,8 @@ export function createBar(quality = 'high') {
   arch.castShadow = true;
   const jbStripes = [];
   const colors = [0xff3333, 0xffaa33, 0x33dd55, 0x33aaff, 0xcc44cc];
-  colors.forEach((c, i) => { const s = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.07, 0.02), new THREE.MeshBasicMaterial({ color: c })); s.position.set(0, 1.05 + i * 0.12, 0.36); jb.add(s); jbStripes.push(s); });
-  const jbGlass = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.01), new THREE.MeshBasicMaterial({ color: 0x14102a, transparent: true, opacity: 0.55 }));
+  colors.forEach((c, i) => { const s = new THREE.Mesh(rbox(0.8, 0.07, 0.02), new THREE.MeshBasicMaterial({ color: c })); s.position.set(0, 1.05 + i * 0.12, 0.36); jb.add(s); jbStripes.push(s); });
+  const jbGlass = new THREE.Mesh(rbox(0.9, 0.7, 0.01), new THREE.MeshBasicMaterial({ color: 0x14102a, transparent: true, opacity: 0.55 }));
   jbGlass.position.set(0, 1.2, 0.355); jb.add(jbGlass);
   jb.add(arch);
   const jbLight = new THREE.PointLight(0xaa66ff, 9, 5, 2); jbLight.position.set(-0.7, 1.4, 0.3); jb.add(jbLight);
@@ -264,17 +265,23 @@ export function createBar(quality = 'high') {
   rect(8.8, -3.9, 10, -2.5);
 
   // ---------------- plantas ----------------
-  const leafMat = L({ color: 0x2e7d3a, side: THREE.DoubleSide });
-  for (const [x, z] of [[-9.1, -3.9], [9.1, 6.2], [-6.0, 6.4]]) {
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.18, 0.4, 10), L({ color: 0x7a3b22 })); pot.position.set(x, 0.2, z); pot.castShadow = true; root.add(pot);
-    for (let i = 0; i < 9; i++) {
-      const lf = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.9), leafMat);
-      lf.position.set(x + Math.cos(i) * 0.1, 0.8, z + Math.sin(i) * 0.1);
-      lf.rotation.set(-0.3 - Math.random() * 0.4, i * 0.7, 0.2 * Math.sin(i));
-      lf.castShadow = true; root.add(lf);
-    }
-    circle(x, z, 0.4);
-  }
+  const potPts = [[0, 0], [0.16, 0], [0.23, 0.05], [0.27, 0.3], [0.3, 0.42], [0.27, 0.45], [0.23, 0.43], [0.0, 0.4]].map((p) => new THREE.Vector2(p[0], p[1]));
+  const potMat = M(TX.toTex(TX.woodDark([14, 62, 38], 77)), { roughness: 0.85 });
+  const leafGreens = [0x2f8f4a, 0x3aa65a, 0x277a40, 0x4cbc6a].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.75, flatShading: true }));
+  const soilMat = L({ color: 0x2a1a10 });
+  [[-9.1, -3.9, 1.0], [9.1, 6.2, 1.15], [-6.0, 6.4, 0.9]].forEach(([x, z, k], pi) => {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(k);
+    const pot = new THREE.Mesh(new THREE.LatheGeometry(potPts, 18), potMat); pot.castShadow = pot.receiveShadow = true; g.add(pot);
+    const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.03, 16), soilMat); soil.position.y = 0.41; g.add(soil);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.55, 8), L({ color: 0x5a3a20 })); trunk.position.y = 0.68; trunk.castShadow = true; g.add(trunk);
+    const blobs = [[0, 1.25, 0, 0.3], [0.2, 1.0, 0.08, 0.24], [-0.19, 1.05, -0.06, 0.25], [0.04, 0.88, -0.2, 0.22], [-0.05, 0.92, 0.2, 0.22], [0.02, 1.5, 0.02, 0.2], [0.24, 1.3, -0.1, 0.18], [-0.24, 1.28, 0.08, 0.19]];
+    blobs.forEach(([bx, by, bz, br], i) => {
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(br, 1), leafGreens[(i + pi) % leafGreens.length]);
+      m.position.set(bx, by, bz); m.scale.set(1, 0.82, 1); m.rotation.y = i; m.castShadow = true; m.receiveShadow = true; g.add(m);
+    });
+    root.add(g);
+    circle(x, z, 0.42 * k);
+  });
 
   // ---------------- porta de entrada ----------------
   box(1.3, 2.3, 0.1, M(woodFront), 3.2, 1.15, 6.93, root, false);
@@ -383,7 +390,7 @@ export function createBar(quality = 'high') {
   // palco, sofás, mesinhas
   const stage = box(2.3, 0.4, 6.6, M(TX.toTex(TX.checker('#18101e', '#3a2a46')), { roughness: 0.3, metalness: 0.3 }), 16.8, 0.2, 0, vip);
   const ledMat = new THREE.MeshBasicMaterial({ color: 0xff2fb0 });
-  const led = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 6.6), ledMat); led.position.set(15.63, 0.34, 0); vip.add(led);
+  const led = new THREE.Mesh(rbox(0.06, 0.08, 6.6), ledMat); led.position.set(15.63, 0.34, 0); vip.add(led);
   rect(15.6, -3.4, 18, 3.4);
   const leather = M(TX.toTex(TX.fabric('#6a0f1e'), { repeat: [1, 1] }), { roughness: 0.45 });
   const couch = (x, z, ry) => {

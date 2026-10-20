@@ -4,11 +4,12 @@ Bar 3D multiplayer em **primeira pessoa**, direto no navegador (PC e celular). T
 
 - **Front**: HTML + [Three.js](https://threejs.org) (vendorizado em `public/vendor`), sem build. Todas as texturas/modelos são gerados por código.
 - **Hospedagem**: Vercel (site estático em `public/` + funções em `api/`).
-- **Banco**: Neon (Postgres) — jogadores, visual e placar do dia. O servidor confere o tempo de cada cerveja (anti-trapaça).
+- **Banco**: Neon (Postgres) — contas, visual e placar do dia. O servidor confere o tempo de cada cerveja (anti-trapaça).
 - **Tempo real** (posição, chat, animações): Supabase Realtime *broadcast/presence* — não usa tabela nenhuma.
 
 ## Fluxo do jogo
 
+0. **Página inicial**: criar conta ou entrar com **nome + senha** (mínimo 3 caracteres, sem repetir; a senha é guardada com hash scrypt no Neon). Conta antiga sem senha: o primeiro login define a senha.
 1. **Guarda-roupa**: o personagem em frente a um guarda-roupa velho; o painel lateral escolhe cabelo, olhos, boca, camisa, calça, calçado, chapéu e óculos (tudo em 3D ao vivo).
 2. **Buteco** (primeira pessoa): `WASD` anda, mouse olha.
 3. **Cerveja não é infinita**: fale com a **Bella** no balcão (`E`) e peça uma cerveja → ela deixa uma **garrafa** na mesinha ao lado → **clique na garrafa** pra servir no copo → **segure `ESPAÇO`** (ou botão esquerdo / botão na tela) ~5 s pra beber. Cada copo bebido = **1 ponto**. O servidor (Neon) controla cada etapa e o tempo.

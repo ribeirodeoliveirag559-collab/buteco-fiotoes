@@ -1,5 +1,6 @@
 // Cena de abertura: o personagem na frente de um guarda-roupa velho. O painel lateral escolhe as roupas.
 import * as THREE from 'three';
+import { rbox } from './shapes.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import * as TX from './textures.js';
 import { createAvatar, hatMesh } from './avatar.js';
@@ -17,7 +18,7 @@ export function createWardrobe(quality, look) {
 
   const M = (map, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ map, roughness: 0.85 }, o));
   const add = (m, x, y, z) => { m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; scene.add(m); return m; };
-  const box = (w, h, d, mat, x, y, z) => add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat), x, y, z);
+  const box = (w, h, d, mat, x, y, z) => add(new THREE.Mesh(rbox(w, h, d), mat), x, y, z);
 
   // ---- quarto ----
   const floorTex = TX.toTex(TX.floorWood(21), { repeat: [3, 2.2] });
@@ -38,7 +39,7 @@ export function createWardrobe(quality, look) {
   const winG = new THREE.Group(); winG.position.set(-3.58, 1.9, 0.6); winG.rotation.y = Math.PI / 2;
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.5), new THREE.MeshBasicMaterial({ color: 0x4a6cc0 })); winG.add(sky);
   for (const [w, h, x, y] of [[1.3, 0.07, 0, 0.75], [1.3, 0.07, 0, -0.75], [0.07, 1.6, -0.6, 0], [0.07, 1.6, 0.6, 0], [0.05, 1.5, 0, 0], [1.2, 0.05, 0, 0]]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), M(woodTex2)); b.position.set(x, y, 0.03); winG.add(b);
+    const b = new THREE.Mesh(rbox(w, h, 0.08), M(woodTex2)); b.position.set(x, y, 0.03); winG.add(b);
   }
   scene.add(winG);
   const moon = new THREE.SpotLight(0x7a97ff, hi ? 90 : 60, 14, 0.7, 0.8, 1.6);
@@ -51,7 +52,7 @@ export function createWardrobe(quality, look) {
   const wood = M(woodTex, { roughness: 0.75 });
   const woodDarkM = M(TX.toTex(TX.woodDark([16, 30, 8], 23)), { roughness: 0.95 });
   const wd = new THREE.Group(); scene.add(wd);
-  const wb = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; wd.add(m); return m; };
+  const wb = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(rbox(w, h, d), mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; wd.add(m); return m; };
   wb(W, H, 0.05, woodDarkM, 0, H / 2 + 0.2, WZ - D / 2 + 0.025);              // fundo
   wb(0.07, H, D, wood, -W / 2 + 0.035, H / 2 + 0.2, WZ);                       // lados
   wb(0.07, H, D, wood, W / 2 - 0.035, H / 2 + 0.2, WZ);
@@ -71,7 +72,7 @@ export function createWardrobe(quality, look) {
   // sapatos no chão
   S.SHOES.forEach((s, i) => {
     const cols = { americana: '#8b5a2b', 'bico-fino': '#3a2216', 'botina-amarela': '#e6b422', 'chinelo-couro': '#9b6a3c', 'sandalia-quadrada': '#2b2b2b' };
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.34), new THREE.MeshLambertMaterial({ color: cols[s.id] })); m.position.set(0.15 + i * 0.2, 0.42, WZ + 0.08); m.castShadow = true; wd.add(m);
+    const m = new THREE.Mesh(rbox(0.16, 0.14, 0.34), new THREE.MeshLambertMaterial({ color: cols[s.id] })); m.position.set(0.15 + i * 0.2, 0.42, WZ + 0.08); m.castShadow = true; wd.add(m);
   });
   // cabides com as camisas de verdade (texturas das camisas do jogo)
   const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, W / 2 - 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xb08a3e, metalness: 0.9, roughness: 0.35 }));
@@ -88,7 +89,7 @@ export function createWardrobe(quality, look) {
     m.position.set(x, 2.1, WZ + (i % 2 ? 0.1 : -0.12));
     m.rotation.y = (i % 2 ? 1 : -1) * 0.5;
     m.castShadow = true;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.01), new THREE.MeshStandardMaterial({ color: 0xb08a3e, metalness: 0.9, roughness: 0.4 }));
+    const hanger = new THREE.Mesh(rbox(0.04, 0.12, 0.01), new THREE.MeshStandardMaterial({ color: 0xb08a3e, metalness: 0.9, roughness: 0.4 }));
     hanger.position.set(x, 2.3, m.position.z);
     wd.add(m, hanger);
   });
@@ -101,8 +102,8 @@ export function createWardrobe(quality, look) {
   const doorMat = M(woodTex, { roughness: 0.7 });
   const mkDoor = (hingeX, dir, ang) => {
     const g = new THREE.Group(); g.position.set(hingeX, H / 2 + 0.25, WZ + D / 2);
-    const m = new THREE.Mesh(new THREE.BoxGeometry(W / 2 - 0.04, H - 0.06, 0.05), doorMat); m.position.x = dir * (W / 4 - 0.02); m.castShadow = m.receiveShadow = true; g.add(m);
-    const inset = new THREE.Mesh(new THREE.BoxGeometry(W / 2 - 0.4, H - 0.5, 0.02), woodDarkM); inset.position.set(dir * (W / 4 - 0.02), 0, 0.03); g.add(inset);
+    const m = new THREE.Mesh(rbox(W / 2 - 0.04, H - 0.06, 0.05), doorMat); m.position.x = dir * (W / 4 - 0.02); m.castShadow = m.receiveShadow = true; g.add(m);
+    const inset = new THREE.Mesh(rbox(W / 2 - 0.4, H - 0.5, 0.02), woodDarkM); inset.position.set(dir * (W / 4 - 0.02), 0, 0.03); g.add(inset);
     const hdl = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.3 })); hdl.position.set(dir * (W / 2 - 0.12), 0, 0.05); g.add(hdl);
     g.rotation.y = ang; wd.add(g); return g;
   };
@@ -169,12 +170,18 @@ export function createWardrobe(quality, look) {
       camera.aspect = aspect;
       const portrait = aspect < 0.9;
       camera.fov = portrait ? 50 : 38;
-      camera.position.set(0, portrait ? 1.6 : 1.5, portrait ? 5.9 + (1 / aspect - 1) * 1.3 : 5.0);
+      camera.position.set(0, portrait ? 1.6 : 1.5, portrait ? 6.6 + (1 / aspect - 1) * 1.3 : 5.0);
       camera.lookAt(0, portrait ? 1.05 : 1.2, 0);
       panelPx = portrait ? 0 : panelWidth;
       if (portrait && panelHeight) camera.setViewOffset(w, h, 0, panelHeight / 2 - h * 0.05, w, h);
       else if (panelPx) camera.setViewOffset(w, h, panelPx / 2, 0, w, h); else camera.clearViewOffset();
       camera.updateProjectionMatrix();
+    },
+    orbit(tt) {
+      // câmera passeando devagar pelo quarto (fundo da página inicial)
+      const a = Math.sin(tt * 0.18) * 0.5;
+      camera.position.set(Math.sin(a) * 4.2, 1.6, Math.cos(a) * 4.2 + 1.0);
+      camera.lookAt(0, 1.25, -0.4);
     },
     update(dt, tt) {
       t = tt;

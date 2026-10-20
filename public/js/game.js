@@ -161,10 +161,13 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     $('level-label').textContent = levelLabel(me.bac);
     $('level-bar').style.width = clamp((me.bac / MAX_BAC) * 100, 0, 100) + '%';
   }
-  function setNetLabel(s) {
+  let netWarned = false;
+  function setNetLabel(s, why) {
     const el = $('netmode');
+    if (s === 'error' && !netWarned) { netWarned = true; toast('Sem conexão com o tempo real (' + String(why || 'falha').slice(0, 70) + '). Tentando de novo sozinho…', 'wifi-off'); }
+    if (s === 'online') netWarned = false;
     el.innerHTML = s === 'online' ? '<i class="dot on"></i>online' : s === 'local' ? ic('flask-conical') + ' teste' : s === 'error' ? ic('wifi-off') + ' offline' : '…';
-    el.title = s === 'local' ? 'Modo teste: só enxerga outras abas deste navegador (configure o Supabase Realtime).' : '';
+    el.title = s === 'local' ? 'Modo teste: só enxerga outras abas deste navegador (configure o Supabase Realtime).' : s === 'error' ? 'Sem tempo real: ' + (why || 'falha de conexão') + '. Tentando de novo…' : '';
   }
   const drunkLevel = () => Math.sqrt(clamp((me.bac - 9) / 10, 0, 1));
   const isKO = () => Date.now() < me.koUntil;

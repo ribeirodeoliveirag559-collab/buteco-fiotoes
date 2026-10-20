@@ -25,7 +25,7 @@
     let api = null;
 
     // ---------------- modo local ----------------
-    function startLocal() {
+    function startLocal(quiet) {
       const bc = new BroadcastChannel(room);
       const seen = new Map();
       const post = (o) => { try { bc.postMessage(o); } catch (e) { /* ok */ } };
@@ -49,7 +49,7 @@
         for (const [id, v] of seen) if (now - v.t > 15000) { seen.delete(id); H.onLeave(id); }
       }, 5000);
       window.addEventListener('beforeunload', () => post({ k: 'bye', id: sid }));
-      H.onStatus('local');
+      if (!quiet) H.onStatus('local');
       api = {
         mode: 'local',
         send: (d) => post({ k: 'm', d }),
@@ -59,62 +59,93 @@
     }
 
     // ---------------- modo Supabase ----------------
-    async function startSupabase() {
-      try {
-        if (!window.supabase) { try { await loadScript(SB_SRC); } catch (e) { await loadScript(SB_CDN); } }
-        const client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-          realtime: { params: { eventsPerSecond: 20 } },
-        });
-        const ch = client.channel(room, { config: { broadcast: { self: false, ack: false }, presence: { key: sid } } });
-        ch.on('broadcast', { event: 'm' }, ({ payload }) => H.onMsg(payload));
-        ch.on('presence', { event: 'sync' }, () => {
-          const st = ch.presenceState();
-          const now = new Set();
-          for (const key of Object.keys(st)) {
-            if (key === sid) continue;
-            const arr = st[key];
-            const m = arr[arr.length - 1];
-            if (!m) continue;
-            now.add(key);
-            const ser = JSON.stringify(m);
-            if (!known.has(key)) { known.set(key, ser); H.onPeer(key, m); }
-            else if (known.get(key) !== ser) { known.set(key, ser); H.onPeerUpdate(key, m); }
-          }
-          for (const key of [...known.keys()]) if (!now.has(key)) { known.delete(key); H.onLeave(key); }
-        });
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const safe = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error('[net] erro tratando jogador/mensagem:', e); } };
 
-        let trackTimer = null, lastTrack = 0, pending = false;
-        const doTrack = () => {
-          pending = false; lastTrack = Date.now();
-          ch.track(meta).catch(() => {});
-        };
+    // uma tentativa de conexão; lança erro (com o motivo) se não conectar
+    async function connectSupabase() {
+      if (!window.supabase) { try { await loadScript(SB_SRC); } catch (e) { await loadScript(SB_CDN); } }
+      if (!window.supabase || !window.supabase.createClient) throw new Error('cliente do Supabase não carregou');
+      const client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+        realtime: { params: { eventsPerSecond: 20 } },
+      });
+      const ch = client.channel(room, { config: { broadcast: { self: false, ack: false }, presence: { key: sid } } });
+      const onMsg = safe(H.onMsg), onPeer = safe(H.onPeer), onUpd = safe(H.onPeerUpdate), onLeave = safe(H.onLeave);
+      ch.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload));
+      ch.on('presence', { event: 'sync' }, () => {
+        const st = ch.presenceState();
+        const now = new Set();
+        for (const key of Object.keys(st)) {
+          if (key === sid) continue;
+          const arr = st[key];
+          const m = arr[arr.length - 1];
+          if (!m) continue;
+          now.add(key);
+          const ser = JSON.stringify(m);
+          if (!known.has(key)) { known.set(key, ser); onPeer(key, m); }
+          else if (known.get(key) !== ser) { known.set(key, ser); onUpd(key, m); }
+        }
+        for (const key of [...known.keys()]) if (!now.has(key)) { known.delete(key); onLeave(key); }
+      });
+
+      let trackTimer = null, lastTrack = 0, pending = false, closed = false;
+      const doTrack = () => { pending = false; lastTrack = Date.now(); ch.track(meta).catch((e) => console.warn('[net] track falhou', e)); };
+      let first = true;
+      try {
         await new Promise((resolve, reject) => {
-          const to = setTimeout(() => reject(new Error('timeout')), 12000);
-          ch.subscribe((status) => {
-            if (status === 'SUBSCRIBED') { clearTimeout(to); resolve(); }
-            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-              clearTimeout(to); reject(new Error(status));
+          const to = setTimeout(() => { first = false; reject(new Error('sem resposta do servidor em 12 s')); }, 12000);
+          ch.subscribe((status, err) => {
+            if (first) {
+              if (status === 'SUBSCRIBED') { first = false; clearTimeout(to); resolve(); }
+              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                first = false; clearTimeout(to); reject(new Error(status + (err && err.message ? ': ' + err.message : '')));
+              }
+            } else if (!closed) {
+              // quedas e voltas depois de conectado (rede móvel, tela bloqueada...): o cliente reconecta sozinho
+              if (status === 'SUBSCRIBED') { H.onStatus('online'); doTrack(); }
+              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') H.onStatus('error', status);
             }
           });
         });
-        doTrack();
-        H.onStatus('online');
-        api = {
-          mode: 'online',
-          send: (d) => { ch.send({ type: 'broadcast', event: 'm', payload: d }); },
-          setMeta: (m) => {
-            meta = m;
-            if (pending) return;
-            pending = true;
-            const wait = Math.max(0, 1500 - (Date.now() - lastTrack));
-            trackTimer = setTimeout(doTrack, wait);
-          },
-          close: () => { clearTimeout(trackTimer); client.removeChannel(ch); },
-        };
-      } catch (err) {
-        console.warn('Supabase indisponível, usando modo local:', err);
-        H.onStatus('error');
-        startLocal();
+      } catch (e) {
+        try { client.removeChannel(ch); client.realtime.disconnect(); } catch (x) { /* ok */ }
+        throw e;
+      }
+      doTrack();
+      const onVis = () => { if (!document.hidden && !closed) doTrack(); }; // voltou pro app: avisa que está aqui
+      document.addEventListener('visibilitychange', onVis);
+      return {
+        mode: 'online',
+        send: (d) => { ch.send({ type: 'broadcast', event: 'm', payload: d }); },
+        setMeta: (m) => {
+          meta = m;
+          if (pending) return;
+          pending = true;
+          trackTimer = setTimeout(doTrack, Math.max(0, 1500 - (Date.now() - lastTrack)));
+        },
+        close: () => { closed = true; clearTimeout(trackTimer); document.removeEventListener('visibilitychange', onVis); try { client.removeChannel(ch); } catch (e) { /* ok */ } },
+      };
+    }
+
+    // tenta de novo sozinho (3 s, 6 s, 9 s... até 30 s). Enquanto não conecta, o jogo segue jogável no modo local.
+    let stopped = false;
+    async function startSupabase() {
+      for (let attempt = 1; !stopped; attempt++) {
+        try {
+          const online = await connectSupabase();
+          if (stopped) { online.close(); return; }
+          if (api && api.mode === 'local') api.close();
+          api = online; FT.netError = null;
+          H.onStatus('online');
+          return;
+        } catch (err) {
+          const why = String((err && err.message) || err);
+          FT.netError = why;
+          console.warn(`[net] tempo real indisponível (tentativa ${attempt}): ${why}`);
+          H.onStatus('error', why);
+          if (!api) startLocal(true);
+          await sleep(Math.min(30000, 3000 * attempt));
+        }
       }
     }
 
@@ -127,7 +158,7 @@
       ready,
       send(d) { if (api) api.send(d); },
       setMeta(m) { meta = m; if (api) api.setMeta(m); },
-      close() { if (api) api.close(); },
+      close() { stopped = true; if (api) api.close(); },
     };
   }
 

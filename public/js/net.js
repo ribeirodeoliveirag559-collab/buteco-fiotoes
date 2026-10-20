@@ -149,6 +149,7 @@
       }
     }
 
+    Object.defineProperty(FT, 'netMode', { configurable: true, get: () => (api ? api.mode : 'conectando') });
     const hasCfg = cfg && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY;
     const ready = hasCfg ? startSupabase() : Promise.resolve(startLocal());
 
@@ -161,6 +162,39 @@
       close() { stopped = true; if (api) api.close(); },
     };
   }
+
+  // Diagnóstico de conexão (toque na etiqueta "online/offline" do jogo): mostra onde está travando.
+  FT.netDiag = async function (cfg) {
+    const L = [];
+    const add = (s) => L.push(s);
+    const t0 = performance.now();
+    const ms = () => Math.round(performance.now() - t0) + ' ms';
+    const c = navigator.connection || {};
+    add('Aparelho: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 110));
+    add('Internet do navegador: ' + (navigator.onLine ? 'ligada' : 'DESLIGADA') + (c.effectiveType ? ' (' + c.effectiveType + (c.saveData ? ', economia de dados LIGADA' : '') + ')' : ''));
+    add('Página: ' + location.origin);
+    add('Tempo real: ' + (FT.netMode || '?') + (FT.netError ? ' | último erro: ' + FT.netError : ''));
+    add('Biblioteca do Supabase: ' + (window.supabase && window.supabase.createClient ? 'carregada' : 'NÃO carregou'));
+    const url = cfg && cfg.SUPABASE_URL, key = cfg && cfg.SUPABASE_ANON_KEY;
+    if (!url || !key) { add('Config do servidor: SEM chaves do Supabase'); return L.join('\n'); }
+    add('Servidor: ' + url.replace('https://', ''));
+    try {
+      const r = await Promise.race([fetch(url + '/auth/v1/health', { headers: { apikey: key } }), new Promise((_, rej) => setTimeout(() => rej(new Error('demorou mais de 8 s')), 8000))]);
+      add('Teste 1 (HTTPS até o Supabase): ' + (r.ok ? 'OK' : 'respondeu ' + r.status) + ' em ' + ms());
+    } catch (e) { add('Teste 1 (HTTPS até o Supabase): FALHOU — ' + (e && e.message)); }
+    await new Promise((res) => {
+      let done = false;
+      const fin = (s) => { if (done) return; done = true; add('Teste 2 (WebSocket / tempo real): ' + s + ' em ' + ms()); try { ws.close(); } catch (e) { /* ok */ } res(); };
+      let ws;
+      try { ws = new WebSocket(url.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(key) + '&vsn=1.0.0'); }
+      catch (e) { fin('FALHOU ao criar — ' + (e && e.message)); return; }
+      ws.onopen = () => fin('OK');
+      ws.onerror = () => fin('FALHOU (rede bloqueou a conexão)');
+      ws.onclose = (e) => fin('FECHOU antes de abrir (código ' + e.code + ')');
+      setTimeout(() => fin('SEM RESPOSTA em 8 s'), 8000);
+    });
+    return L.join('\n');
+  };
 
   FT.createNet = createNet;
 })();

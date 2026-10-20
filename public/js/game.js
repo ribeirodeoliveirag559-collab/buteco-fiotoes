@@ -673,6 +673,10 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     on($('yt-hide'), 'click', () => $('ytbox').classList.toggle('mini'));
     on($('btn-music'), 'click', () => { music.setMuted(!music.muted); $('btn-music').classList.toggle('off', music.muted); });
     on($('btn-board'), 'click', openRanking);
+    const runDiag = async () => { $('netdiag-text').textContent = 'Testando…'; const t = await FT.netDiag({ SUPABASE_URL: cfg.supabaseUrl, SUPABASE_ANON_KEY: cfg.supabaseAnonKey }); $('netdiag-text').textContent = t; };
+    on($('netmode'), 'click', () => { releaseLock(); $('netdiag').hidden = false; runDiag(); });
+    on($('netdiag-retry'), 'click', runDiag);
+    on($('netdiag-close'), 'click', () => { $('netdiag').hidden = true; });
     on($('rank-close'), 'click', () => { closeRanking(); relock(); syncPause(); });
     on($('ranking'), 'pointerdown', (e) => { if (e.target === $('ranking')) { closeRanking(); syncPause(); } });
     on($('btn-sound'), 'click', () => { FT.audio.init(); FT.audio.setMuted(!FT.audio.muted); setIcon($('btn-sound'), FT.audio.muted ? 'volume-x' : 'volume-2'); });
@@ -1031,7 +1035,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (net) { send({ t: 'sm', v: 0 }); net.close(); net = null; }
     post.setEffects(0, 0, 0, 0);
     camera.fov = 72; camera.updateProjectionMatrix();
-    $('pause').hidden = true; $('screen-game').hidden = true; $('prompt').hidden = true;
+    $('pause').hidden = true; $('screen-game').hidden = true; $('prompt').hidden = true; $('netdiag').hidden = true;
   }
   window.addEventListener('beforeunload', () => { if (me && running) { try { localStorage.setItem('buteco:bac:' + me.pid, JSON.stringify({ d: new Date().toDateString(), v: me.bac, t: Date.now() })); } catch (e) { /* ok */ } } });
 

@@ -1,6 +1,7 @@
 // Jogo em primeira pessoa: movimento, câmera, cerveja, baseado, HOMEM, chat, multiplayer.
 import * as THREE from 'three';
-import { createAvatar, EYE_HEIGHT, lookColors, makeMug, makeJoint } from './avatar.js';
+import { createAvatar, EYE_HEIGHT, lookColors, makeMug, makeJoint, makeBottle, makeVape } from './avatar.js';
+import { createMusic, parseYouTube } from './music.js';
 import { toTex } from './textures.js';
 import { BAR } from './bar.js';
 import { api } from './api.js';
@@ -25,7 +26,8 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   let me = null, running = false, session = null;
   const players = new Map();
   let net = null, locked = false;
-  let rankRows = [], rankDay = '', rankMode = 'online', rankTimer = null, rankSoon = null;
+  let rankRows = [], rankDay = '', rankMode = 'online', rankTimer = null, rankSoon = null, lastWinner = null;
+  let vipAllowed = false, vipRank = 0;
 
   // entrada
   const keys = {};
@@ -41,9 +43,12 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   camera.add(vm);
   const armPivot = new THREE.Group(); vm.add(armPivot);
   const hand = new THREE.Group(); armPivot.add(hand);
-  const mug = makeMug(); const joint = makeJoint();
-  hand.add(mug, joint);
-  mug.scale.setScalar(1.0); joint.visible = false;
+  const mug = makeMug(); const joint = makeJoint(); const vapeDev = makeVape();
+  hand.add(mug, joint, vapeDev);
+  mug.scale.setScalar(1.0); joint.visible = false; vapeDev.visible = false;
+  // garrafa que serve o copo + fio de cerveja
+  const fpBottle = makeBottle(); fpBottle.visible = false; fpBottle.scale.setScalar(0.72); vm.add(fpBottle);
+  const fpStream = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 6), new THREE.MeshBasicMaterial({ color: 0xf2a81d })); fpStream.visible = false; vm.add(fpStream);
   let armMesh = null;
   const vmPose = { lift: 0, smoke: 0, drinkP: 0 };
   function noDepth(o) {
@@ -58,7 +63,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     armMesh = new THREE.Mesh(geo, [side, side, new THREE.MeshLambertMaterial({ color: col.shirt }), new THREE.MeshLambertMaterial({ color: col.skin }), side, side]);
     armPivot.add(armMesh);
     hand.position.set(0, -0.42, 0);
-    noDepth(armMesh); noDepth(mug); noDepth(joint);
+    noDepth(armMesh); noDepth(mug); noDepth(joint); noDepth(vapeDev); noDepth(fpBottle); noDepth(fpStream);
   }
   // luz própria pro braço (fica sempre visível mesmo no escuro)
   const vmLight = new THREE.PointLight(0xffe0b0, 1.4, 2.5, 2);
@@ -72,6 +77,31 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     s.renderOrder = 60; s.userData = { t: -1 }; camera.add(s); fpPuffs.push(s);
   }
   let puffCd = 0;
+  // nuvens GRANDES do cigarro eletrônico (em cima da tela) e fumaça no mundo (pros outros jogadores)
+  const fpClouds = [];
+  for (let i = 0; i < 30; i++) {
+    const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0, color: 0xeaf6ff }));
+    c.renderOrder = 61; c.userData = { t: -1 }; camera.add(c); fpClouds.push(c);
+  }
+  const worldPuffs = [];
+  for (let i = 0; i < 70; i++) {
+    const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0, color: 0xf2f8ff }));
+    c.userData = { t: -1 }; bar.scene.add(c); worldPuffs.push(c);
+  }
+  function emitWorldSmoke(x, y, z, n, big) {
+    for (let i = 0; i < n; i++) {
+      const c = worldPuffs.find((q) => q.userData.t < 0); if (!c) return;
+      c.userData = { t: 0, life: rnd(3.5, 6), vx: rnd(-0.45, 0.45) + (big ? Math.sin(i) * 0.3 : 0), vy: rnd(0.12, 0.4), vz: rnd(-0.45, 0.45), s0: big ? 0.3 : 0.15, s1: big ? rnd(1.6, 2.8) : 0.8 };
+      c.position.set(x + rnd(-0.1, 0.1), y, z + rnd(-0.1, 0.1));
+    }
+  }
+  function emitBigCloud() {
+    for (let i = 0; i < fpClouds.length; i++) {
+      const c = fpClouds[i];
+      c.userData = { t: -rnd(0, 0.7), life: rnd(4.5, 6.5), x: rnd(-0.55, 0.55), y: rnd(-0.3, 0.4), z: -rnd(0.45, 1.1), dx: rnd(-0.06, 0.06), dy: rnd(0.02, 0.1), s1: rnd(1.6, 3.2) };
+    }
+  }
+  const music = createMusic({ toast });
 
   // ---------------- HUD / avisos ----------------
   function toast(text) {
@@ -88,6 +118,10 @@ export function createGame({ bar, camera, post, cfg, quality }) {
   function levelLabel(b) { return b < 3 ? 'Sóbrio' : b < 6 ? 'Alegrinho' : b < 9 ? 'Animado' : b < 12 ? 'Bêbado 🥴' : b < 16 ? 'Muito bêbado' : b < 21 ? 'Chapado' : 'Quase apagando 😵'; }
   function updateStatus() {
     $('beer-n').textContent = me.beers;
+    $('pts-n').textContent = me.points;
+    $('vape-n').textContent = me.vape;
+    $('vape-chip').hidden = me.vape <= 0;
+    $('btn-vape').hidden = me.vape <= 0;
     $('level-label').textContent = levelLabel(me.bac);
     $('level-bar').style.width = clamp((me.bac / KO_BAC) * 100, 0, 100) + '%';
   }
@@ -115,8 +149,19 @@ export function createGame({ bar, camera, post, cfg, quality }) {
         .filter((x) => x.beers > 0).sort((a, b) => b.beers - a.beers);
       rankDay = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     }
-    bar.drawPoster(rankRows, rankDay, me.pid, rankMode);
+    lastWinner = r && r.lastWinner ? r.lastWinner : lastWinner;
+    bar.drawPoster(rankRows, rankDay, me.pid, rankMode, lastWinner);
+    updateVip();
     if (!$('ranking').hidden) fillRankingModal();
+  }
+  function updateVip() {
+    const idx = rankRows.findIndex((r) => r.pid === me.pid);
+    vipRank = idx >= 0 ? idx + 1 : 0;
+    const allowed = idx >= 0 && idx < 5 && rankRows[idx].beers > 0;
+    if (allowed && !vipAllowed) toast('🎉 Você está no TOP 5! O camarote foi liberado pra você');
+    vipAllowed = allowed;
+    bar.setVipOpen(allowed);
+    if (!allowed && bar.inVip(me)) { me.x = 8.6; me.z = 0; me.vx = me.vz = 0; toast('Você saiu do top 5 e perdeu a vaga no camarote 😬'); }
   }
   function rankSoonFn() { clearTimeout(rankSoon); rankSoon = setTimeout(refreshRanking, 1200); }
   function fillRankingModal() {
@@ -145,8 +190,9 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       id, pid: String(m.pid || id).slice(0, 40), name: cleanName(m.n) || 'Alguém', look, av,
       x: clamp(num(m.x, BAR.spawn.x), -9.5, 9.5), z: clamp(num(m.z, BAR.spawn.z), -6.5, 6.5), ry: num(m.ry, 0),
       vx: 0, vz: 0, rx: 0, rz: 0, rt: 0, beers: clamp(num(m.b, 0) | 0, 0, 999), drunk: clamp(num(m.d, 0), 0, 1),
-      drinking: false, smoking: false, redUntil: Date.now() + clamp(num(m.rd, 0), 0, 120000), koUntil: 0, lastChat: 0, lastMv: 0,
+      drinking: false, smoking: false, vaping: 0, redUntil: Date.now() + clamp(num(m.rd, 0), 0, 120000), koUntil: 0, lastChat: 0, lastMv: 0,
     };
+    adoptMusic(m.mu);
     p.rx = p.x; p.rz = p.z;
     av.root.position.set(p.x, 0, p.z); av.root.rotation.y = p.ry;
     bar.scene.add(av.root);
@@ -164,6 +210,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     if (JSON.stringify(lk) !== JSON.stringify(p.look)) { p.look = lk; p.av.setLook(lk); }
     p.beers = Math.max(p.beers, clamp(num(m.b, 0) | 0, 0, 999));
     p.drunk = clamp(num(m.d, 0), 0, 1);
+    adoptMusic(m.mu);
     if (m.rd > 0) p.redUntil = Math.max(p.redUntil, Date.now() + clamp(num(m.rd, 0), 0, 120000));
     if (Date.now() - p.lastMv > 2500) { p.x = p.rx = clamp(num(m.x, p.x), -9.5, 9.5); p.z = p.rz = clamp(num(m.z, p.z), -6.5, 6.5); p.ry = num(m.ry, p.ry); }
   }
@@ -174,6 +221,13 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     players.delete(id);
     addLog(null, `${p.name} saiu do buteco`, true);
     updateOnline(); rankSoonFn();
+  }
+  function adoptMusic(mu) {
+    if (!Array.isArray(mu) || typeof mu[0] !== 'string' || !/^[\w-]{11}$/.test(mu[0])) return;
+    const t0 = num(mu[1], 0);
+    if (t0 > Date.now() + 5000 || Date.now() - t0 > 3 * 3600 * 1000) return;
+    const cur = music.current;
+    if (!cur || t0 > cur.t0 + 1500) music.play({ vid: mu[0], t0, by: String(mu[2] || '').slice(0, 14) });
   }
   function milestone(name, b, mine) {
     if (b >= 5 && b % 5 === 0) { addLog(null, `${mine ? 'Você' : name} já tomou ${b} cervejas! 🍻`, true); if (mine) toast(`${b} cervejas! 🍻`); }
@@ -197,6 +251,9 @@ export function createGame({ bar, camera, post, cfg, quality }) {
         rankSoonFn();
         break;
       }
+      case 'vp': p.vaping = 3; p.vapeEmit = false; FT.audio.vape(); break;
+      case 'mus': if (typeof m.vid === 'string' && /^[\w-]{11}$/.test(m.vid)) { music.play({ vid: m.vid, t0: num(m.t0, Date.now()), by: String(m.by || '').slice(0, 14) }); addLog(null, `🎵 ${p.name} colocou uma música na jukebox`, true); } break;
+      case 'mst': music.stop(); addLog(null, `🎵 ${p.name} parou a jukebox`, true); break;
       case 'sm': p.smoking = !!m.v; if (m.rd > 0) p.redUntil = Date.now() + clamp(num(m.rd, 0), 0, 120000); break;
       case 'ko': p.koUntil = Date.now() + clamp(num(m.ms, 0), 0, 15000); p.drinking = false; break;
       case 'ch': {
@@ -207,25 +264,71 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     }
   }
   const send = (o) => { if (net) { o.id = sid; net.send(o); } };
-  const getMeta = () => ({ pid: me.pid, n: me.name, l: me.look, x: +me.x.toFixed(2), z: +me.z.toFixed(2), ry: +yaw.toFixed(2), b: me.beers, d: +drunkLevel().toFixed(2), rd: Math.max(0, me.redUntil - Date.now()) });
+  const getMeta = () => ({ pid: me.pid, n: me.name, l: me.look, x: +me.x.toFixed(2), z: +me.z.toFixed(2), ry: +yaw.toFixed(2), b: me.beers, d: +drunkLevel().toFixed(2), rd: Math.max(0, me.redUntil - Date.now()), mu: music.current ? [music.current.vid, music.current.t0, music.current.by] : null });
   let metaTimer = null;
   const pushMeta = () => { clearTimeout(metaTimer); metaTimer = setTimeout(() => net && net.setMeta(getMeta()), 500); };
 
-  // ---------------- cerveja ----------------
-  let drinkT = 0, drinkDur = DRINK_MS, drinkingNow = false, gulpT = 0, pendingStart = false;
+  // ---------------- cerveja: pedir -> servir -> beber ----------------
+  let drinkT = 0, drinkDur = DRINK_MS, drinkingNow = false, gulpT = 0, lastHint = 0;
+  let pour = null; // { t } animação de servir
   const dialogOpen = () => !$('dialog').hidden;
+  const jukeOpen = () => !$('jukebox').hidden;
   function newDur() { return DRINK_MS * rnd(0.92, 1.1) * (1 + drunkLevel() * 0.25); }
+  function applyState(st) {
+    if (!st) return;
+    if (typeof st.beers === 'number') me.beers = st.beers;
+    if (typeof st.points === 'number') me.points = st.points;
+    if (typeof st.vape === 'number') me.vape = st.vape;
+    if (typeof st.bottle === 'number') me.bottle = st.bottle;
+    if (typeof st.glass === 'number') me.glass = st.glass;
+    updateStatus();
+  }
+  // servidor (Neon) manda no estado; offline simula igual
+  async function barAct(action) {
+    if (session.offline) {
+      const L = me;
+      if (action === 'order') { if (L.bottle || L.glass) return { ok: false, reason: L.glass ? 'copo-cheio' : 'ja-tem-garrafa' }; L.bottle = 1; return { ok: true, bottle: 1, glass: L.glass }; }
+      if (action === 'pour') { if (!L.bottle) return { ok: false, reason: 'sem-garrafa' }; L.bottle = 0; L.glass = 1; return { ok: true, bottle: 0, glass: 1 }; }
+      if (action === 'start') return L.glass ? { ok: true } : { ok: false, reason: 'sem-copo' };
+      if (action === 'finish') { if (!L.glass) return { ok: false, reason: 'sem-copo' }; L.glass = 0; return { ok: true, glass: 0, beers: L.beers, points: L.points }; }
+    }
+    return api.drink({ pid: session.pid, token: session.token, action });
+  }
+  async function orderBeer() {
+    if (me.glass) return say('Termina esse copo primeiro, amor! 😘', [{ label: 'Tá bom', fn: closeDialog }]);
+    if (me.bottle) return say('Já deixei uma gelada na mesinha pra você, gato. Clica na garrafa pra servir! 😉', [{ label: 'Valeu, Bella', fn: closeDialog }]);
+    const r = await barAct('order');
+    if (!r || !r.ok) { applyState(r); return say('Opa, deu um tilt aqui… tenta de novo, lindinho! 😅', [{ label: 'Tá', fn: closeDialog }]); }
+    applyState(r);
+    FT.audio.clink();
+    say('Já vai, gato… 😘 Deixei a gelada na mesinha aqui do lado. Clica na garrafa pra servir no seu copo!', [{ label: 'Valeu! 🍺', fn: closeDialog }]);
+    setTimeout(() => { if (running && me.bottle && !me.bottleMesh) { me.bottleMesh = bar.spawnBottle(); FT.audio.pop(); } }, 1600);
+  }
+  async function pourBeer() {
+    if (pour || !me.bottle || !me.bottleMesh) return;
+    const r = await barAct('pour');
+    if (!r || !r.ok) { applyState(r); if (r && r.reason === 'copo-cheio') toast('Seu copo já tá cheio! Bebe primeiro 🍺'); return; }
+    applyState(r);
+    bar.takeBottle(me.bottleMesh); me.bottleMesh = null;
+    pour = { t: 0 }; FT.audio.pour();
+  }
   function updateDrink(dt) {
-    const want = (holdBtn || holdKey || holdMouse) && !isKO() && !me.smoking && !dialogOpen() && $('ranking').hidden;
-    if (want) {
+    const wantKey = holdBtn || holdKey || holdMouse;
+    const want = wantKey && !isKO() && !me.smoking && !dialogOpen() && !pour && vapingT <= 0 && $('ranking').hidden && !jukeOpen();
+    if (want && !me.glass) {
+      const n = performance.now();
+      if (n - lastHint > 4500) { lastHint = n; toast(me.bottle ? 'Clique na garrafa da mesinha pra servir no copo 🍺' : 'Seu copo tá vazio! Peça uma cerveja pra Bella no balcão 🍺'); }
+    }
+    const go = want && me.glass;
+    if (go) {
       if (!drinkingNow) {
-        drinkingNow = true; drinkDur = newDur(); me.drinking = true;
+        drinkingNow = true; drinkDur = newDur(); drinkT = 0; me.drinking = true;
         send({ t: 'dr', v: 1 }); FT.audio.clink();
-        if (!session.offline) api.drink({ pid: session.pid, token: session.token, action: 'start' });
+        barAct('start').then((r) => { if (r && r.ok === false && r.reason === 'sem-copo') { applyState(r); drinkingNow = false; me.drinking = false; drinkT = 0; } });
       }
       drinkT += dt * 1000; gulpT -= dt;
       if (gulpT <= 0) { FT.audio.gulp(); gulpT = rnd(0.35, 0.6); }
-      if (drinkT >= drinkDur) { finishBeer(true); drinkT = 0; drinkDur = newDur(); }
+      if (drinkT >= drinkDur) finishBeer();
     } else {
       if (drinkingNow) { drinkingNow = false; me.drinking = false; send({ t: 'dr', v: 0 }); }
       drinkT = Math.max(0, drinkT - dt * 2500);
@@ -235,18 +338,20 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     $('btn-drink').classList.toggle('on', drinkingNow);
     vmPose.drinkP = drinkingNow ? drinkT / drinkDur : 0;
   }
-  async function finishBeer(stillHolding) {
-    me.beers++; me.bac += 1;
-    updateStatus();
-    FT.audio.burp();
+  async function finishBeer() {
+    drinkingNow = false; me.drinking = false; drinkT = 0;
+    send({ t: 'dr', v: 0 });
+    // otimista: o servidor confirma logo em seguida
+    me.glass = 0; me.beers++; me.points++; me.bac += 1;
+    updateStatus(); FT.audio.burp();
     send({ t: 'bw', b: me.beers, d: +drunkLevel().toFixed(2) });
     milestone(me.name, me.beers, true);
     if (me.bac >= KO_BAC) knockOut();
     pushMeta();
-    if (session.offline) { localStorage.setItem('buteco:offline:' + new Date().toDateString(), String(me.beers)); refreshRanking(); return; }
-    const r = await api.drink({ pid: session.pid, token: session.token, action: 'finish', next: !!stillHolding });
-    if (r && r.ok && typeof r.beers === 'number') { me.beers = r.beers; updateStatus(); }
-    else if (r && r.ok === false && typeof r.beers === 'number') { me.beers = r.beers; me.bac = Math.max(0, me.bac - 1); updateStatus(); toast('Calma! O barman não deixou beber tão rápido 🍺'); }
+    if (session.offline) { try { localStorage.setItem('buteco:offline:' + new Date().toDateString(), String(me.beers)); } catch (e) { /* ok */ } }
+    const r = await barAct('finish');
+    if (r && r.ok) applyState(r);
+    else if (r && r.ok === false) { applyState(r); me.bac = Math.max(0, me.bac - 1); toast(r.reason === 'rapido' ? 'Calma! O barman não deixou beber tão rápido 🍺' : 'Esse copo não valeu ponto 🤔'); }
     refreshRanking();
   }
   function knockOut() {
@@ -298,19 +403,99 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     send({ t: 'sm', v: 0, rd: 90000 }); pushMeta(); FT.audio.psy();
     toast('Eita... tá tudo colorido 🌈👁️');
   }
-  const npcP = new THREE.Vector3();
-  function npcInfo() {
-    const dx = BAR.npcPos.x - me.x, dz = BAR.npcPos.z - me.z, d = Math.hypot(dx, dz);
+  // ---------------- garçonete Bella: loja ----------------
+  function talkMaid() {
+    say(`Oi, lindinho! 😘 O que vai ser hoje? (Você tem ${me.points} ponto${me.points === 1 ? '' : 's'})`, [
+      { label: '🍺 Pedir uma cerveja', fn: orderBeer },
+      { label: '💨 Comprar pod (20 pts)', fn: buyPod },
+      { label: 'Só olhando 😏', fn: closeDialog },
+    ]);
+  }
+  async function buyPod() {
+    if (session.offline) return say('Sem conexão com o servidor, a loja fechou… 😅', [{ label: 'Tá', fn: closeDialog }]);
+    const r = await api.shop({ pid: session.pid, token: session.token, item: 'pod' });
+    applyState(r);
+    if (r && r.ok) { FT.audio.pop(); return say(`Pod novinho pra você! 💨 Você tem ${me.vape} tragadas. Aperta F (ou o botão 💨) pra usar. Gastei 20 pontos do seu perfil, tá?`, [{ label: 'Valeu, Bella! 😎', fn: closeDialog }]); }
+    if (r && r.reason === 'pontos') return say(`Faltam pontos, bonitão. Cada pod custa 20 e você tem ${me.points}. Bebe mais uns copinhos! 🍺`, [{ label: 'Já volto', fn: closeDialog }]);
+    say('Deu ruim na maquininha… tenta de novo! 😅', [{ label: 'Tá', fn: closeDialog }]);
+  }
+
+  // ---------------- cigarro eletrônico ----------------
+  let vapingT = 0, vapeCloudDone = true;
+  function useVape() {
+    if (vapingT > 0 || isKO() || dialogOpen() || me.smoking || pour) return;
+    if (me.vape <= 0) { toast('Sem pod! Compre um com a Bella por 20 pontos 💨'); return; }
+    me.vape--; updateStatus();
+    vapingT = 3; vapeCloudDone = false;
+    send({ t: 'vp' }); FT.audio.vape();
+    if (!session.offline) api.vape({ pid: session.pid, token: session.token }).then((r) => { if (r && typeof r.vape === 'number') { me.vape = r.vape; updateStatus(); } });
+  }
+
+  // ---------------- jukebox ----------------
+  let lastTrackAt = 0;
+  function openJukebox() { releaseLock(); $('jukebox').hidden = false; $('jb-url').focus(); syncPause(); }
+  function closeJukebox() { if ($('jukebox').hidden) return; $('jukebox').hidden = true; $('jb-url').blur(); relock(); syncPause(); }
+  function playFromJukebox() {
+    const id = parseYouTube($('jb-url').value);
+    if (!id) { toast('Link inválido. Cole um link do YouTube 🎵'); return; }
+    if (Date.now() - lastTrackAt < 15000) { toast('Calma! Espera uns segundos pra trocar a música 🎶'); return; }
+    lastTrackAt = Date.now();
+    const track = { vid: id, t0: Date.now(), by: me.name };
+    music.play(track); send({ t: 'mus', vid: track.vid, t0: track.t0, by: track.by });
+    $('jb-url').value = ''; closeJukebox(); pushMeta();
+    addLog(null, '🎵 Você colocou uma música na jukebox', true);
+  }
+
+  // ---------------- alvos de interação ----------------
+  const camDir = new THREE.Vector3();
+  let target = null;
+  function viewInfo(x, z, maxD, cone) {
+    const dx = x - me.x, dz = z - me.z, d = Math.hypot(dx, dz);
     const fwd = [-Math.sin(yaw), -Math.cos(yaw)];
     const dot = d > 0 ? (fwd[0] * dx + fwd[1] * dz) / d : 1;
-    return { d, near: d < 3.4 && dot > 0.75 };
+    return { d, ok: d < maxD && dot > cone, dot };
   }
+  function npcInfo() { const i = viewInfo(BAR.npcPos.x, BAR.npcPos.z, 3.4, 0.75); return { d: i.d, near: i.ok }; }
+  function computeTarget() {
+    if (isKO() || dialogOpen() || jukeOpen()) return null;
+    if (me.bottleMesh) {
+      camera.getWorldDirection(camDir);
+      const bp = me.bottleMesh.position;
+      const vx = bp.x - camera.position.x, vy = bp.y + 0.15 - camera.position.y, vz = bp.z - camera.position.z;
+      const d = Math.hypot(vx, vy, vz);
+      if (d < 3.2 && (vx * camDir.x + vy * camDir.y + vz * camDir.z) / d > 0.93) return { type: 'bottle', d };
+    }
+    let best = null;
+    const test = (type, pos, maxD, cone) => { const i = viewInfo(pos.x, pos.z, maxD, cone); if (i.ok && (!best || i.d < best.d)) best = { type, d: i.d }; };
+    test('maid', BAR.maidPos, 3.4, 0.7);
+    test('man', BAR.npcPos, 3.4, 0.75);
+    test('jukebox', BAR.jukebox, 2.8, 0.5);
+    if (!best) { const i = viewInfo(BAR.vipDoor.x - 0.6, BAR.vipDoor.z, 3.4, 0.6); if (i.ok && !vipAllowed) best = { type: 'vip', d: i.d }; }
+    return best;
+  }
+  function interact() {
+    if (isKO()) return;
+    const tg = target;
+    if (tg && tg.type === 'bottle') return pourBeer();
+    if (tg && tg.type === 'maid' && !dialogOpen()) return talkMaid();
+    if (tg && tg.type === 'man' && !dialogOpen()) return talkHomem();
+    if (tg && tg.type === 'jukebox') return openJukebox();
+    if (me.hasJoint) startSmoking();
+  }
+  const PROMPTS = {
+    bottle: () => (isTouch ? '🍺 toque em SERVIR' : '🍺 Clique — servir no copo'),
+    maid: () => (isTouch ? '😘 toque em FALAR com a Bella' : '😘 E — falar com a Bella'),
+    man: () => (isTouch ? '✋ toque em FALAR' : '✋ E — falar com o homem'),
+    jukebox: () => (isTouch ? '🎵 toque em USAR' : '🎵 E — pedir música'),
+    vip: () => '🔒 Camarote: só o TOP 5 do dia entra' + (vipRank ? ' · você está em #' + vipRank : ' · você ainda não pontuou'),
+  };
+
 
   // ---------------- pointer lock / entrada ----------------
   function lockNow() { if (!isTouch && running && post.canvas.requestPointerLock) { try { const p = post.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ok */ } } }
   function releaseLock() { if (document.pointerLockElement) document.exitPointerLock(); }
-  function relock() { if (!$('ranking').hidden || dialogOpen() || document.activeElement === $('chatinput')) return; lockNow(); }
-  function syncPause() { $('pause').hidden = !running || isTouch || locked || !$('ranking').hidden || dialogOpen() || document.activeElement === $('chatinput'); }
+  function relock() { if (!$('ranking').hidden || dialogOpen() || jukeOpen() || document.activeElement === $('chatinput')) return; lockNow(); }
+  function syncPause() { $('pause').hidden = !running || isTouch || locked || !$('ranking').hidden || dialogOpen() || jukeOpen() || document.activeElement === $('chatinput'); }
 
   function openChat() {
     releaseLock(); $('chatform').classList.add('open'); $('chatinput').focus(); syncPause();
@@ -332,19 +517,20 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       syncPause();
     });
     on(document, 'mousemove', (e) => { if (!locked) return; yaw -= e.movementX * 0.0022; pitch = clamp(pitch - e.movementY * 0.0022, -1.45, 1.45); });
-    on(post.canvas, 'mousedown', (e) => { if (!running) return; FT.audio.init(); if (!locked && !isTouch) { lockNow(); return; } if (e.button === 0) holdMouse = true; });
+    on(post.canvas, 'mousedown', (e) => { if (!running) return; FT.audio.init(); if (!locked && !isTouch) { lockNow(); return; } if (e.button === 0) { if (target && target.type !== 'vip') interact(); else holdMouse = true; } });
     on(window, 'mouseup', (e) => { if (e.button === 0) holdMouse = false; });
     on($('pause'), 'click', () => { FT.audio.init(); $('chatform').classList.remove('open'); $('chatinput').blur(); lockNow(); });
 
     on(window, 'keydown', (e) => {
       if (!running) return;
       const inChat = document.activeElement === $('chatinput');
-      if (e.key === 'Escape') { $('chatinput').blur(); $('chatform').classList.remove('open'); if (dialogOpen()) closeDialog(); closeRanking(); syncPause(); return; }
+      if (e.key === 'Escape') { $('chatinput').blur(); $('chatform').classList.remove('open'); if (dialogOpen()) closeDialog(); closeRanking(); closeJukebox(); syncPause(); return; }
       if (inChat) return;
       if (e.code === 'Enter' || e.code === 'KeyT') { e.preventDefault(); openChat(); return; }
       if (e.code === 'Tab') { e.preventDefault(); if ($('ranking').hidden) openRanking(); else closeRanking(); return; }
       if (e.code === 'Space') { e.preventDefault(); holdKey = true; return; }
-      if (e.code === 'KeyE') { if (me.hasJoint) startSmoking(); else if (npcInfo().near && !dialogOpen()) talkHomem(); return; }
+      if (e.code === 'KeyE') { interact(); return; }
+      if (e.code === 'KeyF') { useVape(); return; }
       keys[e.code] = true;
       if (e.code.startsWith('Arrow')) e.preventDefault();
     });
@@ -357,7 +543,14 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     on(db, 'pointerdown', down); on(db, 'pointerup', up); on(db, 'pointercancel', up); on(db, 'lostpointercapture', up);
     on(db, 'contextmenu', (e) => e.preventDefault());
     on($('btn-smoke'), 'click', startSmoking);
-    on($('btn-use'), 'click', () => { if (npcInfo().near && !dialogOpen()) talkHomem(); });
+    on($('btn-use'), 'click', () => interact());
+    on($('btn-vape'), 'click', useVape);
+    on($('jb-play'), 'click', playFromJukebox);
+    on($('jb-url'), 'keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); playFromJukebox(); } });
+    on($('jb-stop'), 'click', () => { music.stop(); send({ t: 'mst' }); closeJukebox(); pushMeta(); });
+    on($('jb-close'), 'click', closeJukebox);
+    on($('yt-hide'), 'click', () => $('ytbox').classList.toggle('mini'));
+    on($('btn-music'), 'click', () => { music.setMuted(!music.muted); $('btn-music').textContent = music.muted ? '🔇' : '🎵'; });
     on($('btn-board'), 'click', openRanking);
     on($('rank-close'), 'click', () => { closeRanking(); relock(); syncPause(); });
     on($('ranking'), 'pointerdown', (e) => { if (e.target === $('ranking')) { closeRanking(); syncPause(); } });
@@ -413,7 +606,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     // movimento
     let f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
     let s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
-    if (ko || me.smoking || dialogOpen()) { f = s = 0; }
+    if (ko || me.smoking || dialogOpen() || jukeOpen()) { f = s = 0; }
     const len = Math.hypot(f, s); if (len > 1) { f /= len; s /= len; }
     if (dl > 0 && (f || s)) {
       const w = Math.sin(t * 2.1) * dl * 0.8 + Math.sin(t * 5.7) * dl * 0.3;
@@ -426,6 +619,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     me.vx += (tvx - me.vx) * Math.min(1, dt * 9); me.vz += (tvz - me.vz) * Math.min(1, dt * 9);
     me.x += me.vx * dt; me.z += me.vz * dt;
     bar.collide(me, 0.32);
+    if (!vipAllowed && bar.inVip(me)) { me.x = 8.6; me.z = 0; me.vx = me.vz = 0; toast('Camarote só pro TOP 5 do dia 🔒'); }
     const sp = Math.hypot(me.vx, me.vz);
     bobPhase += dt * (4 + sp * 1.6) * (sp > 0.1 ? 1 : 0);
 
@@ -436,6 +630,13 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       if (me.smokeLeft <= 0) endSmoking();
     }
     updateDrink(dt);
+    // servir
+    if (pour) { pour.t += dt; if (pour.t >= 1.7) pour = null; }
+    // vape
+    if (vapingT > 0) {
+      vapingT -= dt;
+      if (!vapeCloudDone && vapingT < 1.6) { vapeCloudDone = true; emitBigCloud(); }
+    }
 
     // rede
     const now = performance.now();
@@ -461,7 +662,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
 
     // modelo em 1ª pessoa
     vmPose.lift += ((me.drinking ? 1 : 0) - vmPose.lift) * Math.min(1, dt * 7);
-    vmPose.smoke += ((me.smoking ? 1 : 0) - vmPose.smoke) * Math.min(1, dt * 6);
+    vmPose.smoke += (((me.smoking || vapingT > 0) ? 1 : 0) - vmPose.smoke) * Math.min(1, dt * 6);
     const lf = vmPose.lift, sm = vmPose.smoke, idleB = Math.sin(bobPhase) * 0.012 * Math.min(1, sp / 2) + Math.sin(t * 1.5) * 0.004;
     const dp = vmPose.drinkP;
     const wI = 1 - lf - sm;
@@ -473,14 +674,36 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     tmpV.set(aim[0] - pv[0], aim[1] - pv[1], aim[2] - pv[2]).normalize();
     armPivot.quaternion.setFromUnitVectors(DOWN, tmpV);
     const rot = 0;
-    mug.visible = lf > 0.05 || !me.smoking; mug.visible = !me.smoking;
+    mug.visible = !(me.smoking || vapingT > 0);
     tmpQ.setFromEuler(tmpE.set(lf * (0.1 + dp * 1.3), 0, 0)); mug.quaternion.copy(armPivot.quaternion).invert().multiply(tmpQ);
     mug.position.set(0.0, 0.0, 0);
-    mug.userData.setLevel(drinkingNow || lf > 0.1 ? 1 - dp * 0.97 : 1);
-    joint.visible = me.smoking || sm > 0.1;
+    const pk = pour ? Math.min(1, pour.t / 1.7) : 0;
+    const pourFill = pour ? clamp((pk - 0.2) / 0.55, 0, 1) : 1;
+    mug.userData.setLevel(pour ? pourFill : me.glass ? 1 - dp * 0.97 : 0);
+    joint.visible = me.smoking;
     tmpQ.setFromEuler(tmpE.set(0.3, -0.5, 0.2)); joint.quaternion.copy(armPivot.quaternion).invert().multiply(tmpQ);
     joint.position.set(0, 0.02, -0.04);
     joint.userData.ember.scale.setScalar(1 + Math.sin(t * 14) * 0.25);
+    vapeDev.visible = vapingT > 0;
+    tmpQ.setFromEuler(tmpE.set(0.2, 0, 0)); vapeDev.quaternion.copy(armPivot.quaternion).invert().multiply(tmpQ);
+    vapeDev.position.set(0, 0.03, -0.02);
+    vapeDev.userData.led.scale.setScalar(1 + Math.max(0, Math.sin(t * 9)) * 0.9);
+    // garrafa servindo
+    fpBottle.visible = !!pour; fpStream.visible = false;
+    if (pour) {
+      const inK = clamp(pk / 0.2, 0, 1), outK = clamp((pk - 0.88) / 0.12, 0, 1);
+      const tilt = Math.PI * 0.92 * clamp((pk - 0.12) / 0.2, 0, 1) * (1 - outK);
+      const ax2 = clamp(camera.aspect / 1.3, 0.5, 1);
+      fpBottle.position.set((0.34 + (1 - inK) * 0.25 + outK * 0.3) * ax2, 0.14 - (1 - inK) * 0.35, -0.5);
+      fpBottle.rotation.set(0, 0, tilt);
+      if (pk > 0.2 && pk < 0.78) {
+        fpStream.visible = true;
+        const tipX = fpBottle.position.x - Math.sin(tilt) * -0.34 * 0 + 0, topY = fpBottle.position.y;
+        const mugX = 0.25 * ax2, mugY = -0.12;
+        fpStream.position.set(mugX, (mugY + topY - 0.2) / 2, -0.5);
+        fpStream.scale.set(1, Math.max(0.05, topY - 0.2 - mugY), 1);
+      }
+    }
     vm.visible = !ko;
 
     // fumaça em 1ª pessoa
@@ -494,6 +717,25 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       q.scale.setScalar(0.08 + k * 0.35); q.material.opacity = Math.sin(k * Math.PI) * 0.35;
     });
 
+    // nuvens grandes do vape (em cima da tela)
+    fpClouds.forEach((c) => {
+      const u = c.userData; if (u.t === -1 && c.material.opacity === 0) return;
+      u.t += dt;
+      if (u.t < 0) return;
+      const k = u.t / u.life;
+      if (k >= 1) { u.t = -1; c.material.opacity = 0; return; }
+      c.position.set(u.x + u.dx * u.t, u.y + u.dy * u.t, u.z);
+      c.scale.setScalar(0.35 + (u.s1 - 0.35) * Math.min(1, k * 2.2));
+      c.material.opacity = Math.min(1, k * 8) * (1 - k) * 0.62;
+    });
+    worldPuffs.forEach((c) => {
+      const u = c.userData; if (u.t < 0) return;
+      u.t += dt; const k = u.t / u.life;
+      if (k >= 1) { u.t = -1; c.material.opacity = 0; return; }
+      c.position.x += u.vx * dt; c.position.y += u.vy * dt; c.position.z += u.vz * dt;
+      c.scale.setScalar(u.s0 + (u.s1 - u.s0) * Math.min(1, k * 1.8));
+      c.material.opacity = Math.min(1, k * 6) * (1 - k) * 0.5;
+    });
     // outros jogadores
     players.forEach((p) => {
       const age = Math.min(0.7, (now - p.rt) / 1000);
@@ -507,18 +749,24 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       st.speed += (clamp(spd / 3, 0, 1.2) - st.speed) * Math.min(1, dt * 8);
       const pko = Date.now() < p.koUntil;
       st.drink = p.drinking && !pko ? 1 : 0; st.smoke = p.smoking && !pko ? 1 : 0; st.ko = pko ? 1 : 0; st.drunk = p.drunk;
+      if (p.vaping > 0) { p.vaping -= dt; st.vape = 1; if (!p.vapeEmit && p.vaping < 1.6) { p.vapeEmit = true; emitWorldSmoke(p.x, 1.55, p.z, 24, true); } } else st.vape = 0;
       a.setRed(Date.now() < p.redUntil);
       a.update(dt);
       if (st.smoke && Math.random() < dt * 1.2) { /* fumaça de terceiros é discreta */ }
     });
 
-    // interação com o HOMEM
+    // alvo de interação (garrafa, Bella, homem, jukebox, porta do camarote)
+    target = computeTarget();
     const ni = npcInfo();
-    const showUse = ni.near && !dialogOpen() && !me.hasJoint;
-    $('prompt').hidden = !showUse && !me.hasJoint ? true : !(showUse || (me.hasJoint && !me.smoking));
-    if (!$('prompt').hidden) $('prompt').textContent = me.hasJoint ? (isTouch ? '🚬 toque em FUMAR' : '🚬 aperte E pra fumar') : (isTouch ? '✋ toque em FALAR' : '✋ E — falar com o homem');
-    $('btn-use').hidden = !isTouch || !showUse;
-    if (!isTouch) $('crosshair').style.opacity = showUse ? 1 : 0.7;
+    const showPrompt = !!target || (me.hasJoint && !me.smoking && !dialogOpen());
+    $('prompt').hidden = !showPrompt;
+    if (showPrompt) $('prompt').textContent = target ? PROMPTS[target.type]() : (isTouch ? '🚬 toque em FUMAR' : '🚬 aperte E pra fumar');
+    const canUse = !!target && target.type !== 'vip';
+    $('btn-use').hidden = !isTouch || !canUse;
+    if (canUse) $('btn-use').querySelector('span').textContent = target.type === 'bottle' ? 'SERVIR' : target.type === 'jukebox' ? 'MÚSICA' : 'FALAR';
+    if (!isTouch) $('crosshair').style.opacity = canUse ? 1 : 0.7;
+    // som: volume cai com a distância da jukebox e sobe no camarote
+    music.tick(me, bar.inVip(me));
 
     // olhos do NPC acompanham o jogador (cabeça gira de leve)
     const npcHead = bar.npc.P.head;
@@ -538,7 +786,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
 
     if (Math.floor(t / 0.25) !== update._h) { update._h = Math.floor(t / 0.25); updateStatus(); }
     if (t - (update._start || (update._start = t)) > 18) $('hint').classList.add('gone');
-    bar.update(dt, t);
+    bar.update(dt, t, me);
   }
 
   // ---------------- início / fim ----------------
@@ -547,14 +795,15 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     const look = S.sanitizeLook(sess.look);
     let beers = sess.beers | 0;
     if (sess.offline) { const v = parseInt(localStorage.getItem('buteco:offline:' + new Date().toDateString()) || '0', 10); beers = isNaN(v) ? 0 : v; }
-    me = { pid: sess.pid, name: sess.name, look, x: BAR.spawn.x + rnd(-0.8, 0.8), z: BAR.spawn.z + rnd(-0.3, 0.3), vx: 0, vz: 0, beers, bac: 0, hasJoint: false, jointReadyAt: 0, smokeLeft: 0, puffT: 0, koUntil: 0, koWas: false, redUntil: 0, drinking: false, smoking: false };
+    me = { pid: sess.pid, name: sess.name, look, x: BAR.spawn.x + rnd(-0.8, 0.8), z: BAR.spawn.z + rnd(-0.3, 0.3), vx: 0, vz: 0, beers, points: sess.points | 0, vape: sess.vape | 0, bottle: sess.bottle | 0, glass: sess.glass | 0, bottleMesh: null, bac: 0, hasJoint: false, jointReadyAt: 0, smokeLeft: 0, puffT: 0, koUntil: 0, koWas: false, redUntil: 0, drinking: false, smoking: false };
     // se voltou no mesmo dia, o álcool "volta" proporcional (aprox.)
     const bacKey = 'buteco:bac:' + sess.pid;
     try { const b = JSON.parse(localStorage.getItem(bacKey) || 'null'); if (b && new Date().toDateString() === b.d) me.bac = Math.max(0, b.v - (Date.now() - b.t) / 50000); } catch (e) { /* ok */ }
     yaw = Math.PI; pitch = 0; // olhando pro balcão (-z)
     yaw = 0;
     buildViewModel(look);
-    drinkT = 0; drinkingNow = false; holdBtn = holdKey = holdMouse = false;
+    drinkT = 0; drinkingNow = false; holdBtn = holdKey = holdMouse = false; pour = null; vapingT = 0; vapeCloudDone = true; vipAllowed = false; vipRank = 0; bar.setVipOpen(false);
+    if (me.bottle) me.bottleMesh = bar.spawnBottle();
     drunkVis = Math.min(1, drunkLevel()); psyVis = 0; psyEnd = 0;
     update._start = 0;
     players.clear();
@@ -575,7 +824,10 @@ export function createGame({ bar, camera, post, cfg, quality }) {
       room: cfg.room || 'buteco-fiotoes-v2', sid, cfg: { SUPABASE_URL: cfg.supabaseUrl, SUPABASE_ANON_KEY: cfg.supabaseAnonKey }, meta: getMeta(),
       onMsg, onPeer: addPeer, onPeerUpdate: updatePeer, onLeave: removePeer, onStatus: setNetLabel,
     });
-    addLog(null, 'Você entrou no Buteco FIOTÕES. Bora beber! 🍺', true);
+    addLog(null, 'Você entrou no Buteco FIOTÕES. Peça sua primeira gelada pra Bella! 🍺', true);
+    if (sess.notice && sess.notice.type === 'winner') {
+      setTimeout(() => say(`🏆 PARABÉNS! Você foi o campeão do dia ${sess.notice.day} com ${sess.notice.beers} copos! Ganhou um cigarro eletrônico com 20 tragadas. Aperte F (ou o botão 💨) pra usar!`, [{ label: 'Eba! 🎉', fn: closeDialog }]), 800);
+    }
     if (isTouch && matchMedia('(orientation: portrait)').matches) toast('Dica: vire o celular na horizontal 📱↔️');
     refreshRanking(); rankTimer = setInterval(refreshRanking, 10000);
     lockNow();
@@ -584,6 +836,9 @@ export function createGame({ bar, camera, post, cfg, quality }) {
     running = false;
     try { localStorage.setItem('buteco:bac:' + me.pid, JSON.stringify({ d: new Date().toDateString(), v: me.bac, t: Date.now() })); } catch (e) { /* ok */ }
     clearInterval(rankTimer); clearTimeout(rankSoon);
+    if (me.bottleMesh) { bar.takeBottle(me.bottleMesh); me.bottleMesh = null; }
+    music.stop(); $('jukebox').hidden = true; vapingT = 0; pour = null;
+    fpClouds.forEach((c) => { c.userData.t = -1; c.material.opacity = 0; }); fpBottle.visible = false; fpStream.visible = false;
     unbindInput(); releaseLock();
     players.forEach((p) => { bar.scene.remove(p.av.root); p.av.dispose(); }); players.clear();
     if (net) { send({ t: 'sm', v: 0 }); net.close(); net = null; }
@@ -595,7 +850,7 @@ export function createGame({ bar, camera, post, cfg, quality }) {
 
   const debug = {
     get me() { return me; }, players, get yaw() { return yaw; }, set yaw(v) { yaw = v; }, set pitch(v) { pitch = v; },
-    set bac(v) { me.bac = v; }, finishBeer, startSmoking, endSmoking, get drunk() { return drunkVis; }, get psy() { return psyVis; },
+    set bac(v) { me.bac = v; }, finishBeer, orderBeer, pourBeer, useVape, get target() { return target; }, get vipAllowed() { return vipAllowed; }, music, startSmoking, endSmoking, get drunk() { return drunkVis; }, get psy() { return psyVis; },
     teleport(x, z) { me.x = x; me.z = z; }, tick(n, dt) { for (let i = 0; i < n; i++) update(dt || 0.05, performance.now() / 1000); },
   };
   return { start, stop, update, debug, get running() { return running; } };

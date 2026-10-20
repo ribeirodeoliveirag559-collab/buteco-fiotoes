@@ -84,7 +84,7 @@ async function enter({ name, look }) {
   let session;
   if (r && r.pid) {
     saveProfile({ pid: r.pid, token: r.token, name, look });
-    session = { pid: r.pid, token: r.token, name, look, beers: r.beers, offline: false };
+    session = { pid: r.pid, token: r.token, name, look, beers: r.beers, points: r.points, vape: r.vape, bottle: r.bottle, glass: r.glass, notice: r.notice, offline: false };
   } else {
     saveProfile({ pid: (prof && prof.pid) || 'local-' + Math.random().toString(36).slice(2, 8), token: '', name, look });
     session = { pid: loadProfile().pid, token: '', name, look, beers: 0, offline: true };

@@ -165,3 +165,17 @@ export function noise(color, amt = 0.15, size = 32, seed = 4) {
   for (let i = 0; i < size * size * 0.5; i++) { g.fillStyle = `rgba(${r() > 0.5 ? '0,0,0' : '255,255,255'},${r() * amt})`; g.fillRect(r() * size, r() * size, 1, 1); }
   return c;
 }
+
+// ---- piso xadrez preto e dourado (camarote) ----
+export function checker(c1 = '#0c0a10', c2 = '#2a2230', gold = '#c9a24a') {
+  const c = canvas(256, 256), g = c.getContext('2d');
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+    g.fillStyle = (x + y) % 2 ? c1 : c2; g.fillRect(x * 64, y * 64, 64, 64);
+    const gr = g.createLinearGradient(x * 64, y * 64, x * 64 + 64, y * 64 + 64);
+    gr.addColorStop(0, 'rgba(255,255,255,.07)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(x * 64, y * 64, 64, 64);
+  }
+  g.fillStyle = gold;
+  for (let i = 0; i <= 4; i++) { g.fillRect(i * 64 - 1, 0, 2, 256); g.fillRect(0, i * 64 - 1, 256, 2); }
+  return c;
+}

@@ -1,8 +1,9 @@
-import { db, readJson, send, auth, beersToday } from './_db.js';
+import { db, readJson, send, auth, stateOf } from './_db.js';
 
-// Anti-trapaça: o servidor mede o tempo de cada cerveja.
-//   start  -> marca o início
-//   finish -> só conta se passaram >= MIN_MS desde o início
+// Cerveja não é infinita. O caminho é:
+//   order  -> a garçonete deixa uma garrafa no balcão       (bottle = 1)
+//   pour   -> clicar na garrafa e servir no copo            (bottle = 0, glass = 1)
+//   start/finish -> beber o copo (>= MIN_MS)                (glass = 0, +1 ponto)
 const MIN_MS = 4400;
 
 export default async function handler(req, res) {
@@ -12,31 +13,40 @@ export default async function handler(req, res) {
     const body = await readJson(req);
     const me = await auth(sql, body);
     if (!me) return send(res, 401, { error: 'auth' });
+    const reply = async (ok, reason) => send(res, 200, { ok, reason, ...(await stateOf(sql, me.pid)) });
 
-    if (body.action === 'start') {
-      await sql`update players set drink_started_at = now(), last_seen = now() where pid = ${me.pid}`;
-      return send(res, 200, { ok: true });
-    }
+    switch (body.action) {
+      case 'order':
+        if (me.bottle || me.glass) return reply(false, me.glass ? 'copo-cheio' : 'ja-tem-garrafa');
+        await sql`update players set bottle = 1, last_seen = now() where pid = ${me.pid}`;
+        return reply(true);
 
-    if (body.action === 'finish') {
-      const next = !!body.next;
-      const rows = await sql`
-        select (extract(epoch from (now() - drink_started_at)) * 1000)::int as ms
-        from players where pid = ${me.pid} and drink_started_at is not null`;
-      const ms = rows[0] ? rows[0].ms : null;
-      if (ms == null || ms < MIN_MS) {
-        return send(res, 200, { ok: false, reason: 'rapido', beers: await beersToday(sql, me.pid) });
+      case 'pour':
+        if (!me.bottle) return reply(false, 'sem-garrafa');
+        if (me.glass) return reply(false, 'copo-cheio');
+        await sql`update players set bottle = 0, glass = 1, last_seen = now() where pid = ${me.pid}`;
+        return reply(true);
+
+      case 'start':
+        if (!me.glass) return reply(false, 'sem-copo');
+        await sql`update players set drink_started_at = now(), last_seen = now() where pid = ${me.pid}`;
+        return reply(true);
+
+      case 'finish': {
+        if (!me.glass) return reply(false, 'sem-copo');
+        const rows = await sql`
+          select (extract(epoch from (now() - drink_started_at)) * 1000)::int as ms
+          from players where pid = ${me.pid} and drink_started_at is not null`;
+        const ms = rows[0] ? rows[0].ms : null;
+        if (ms == null || ms < MIN_MS) return reply(false, 'rapido');
+        await sql`
+          insert into scores (day, pid, beers, last_beer_at)
+          values ((now() at time zone 'America/Sao_Paulo')::date, ${me.pid}, 1, now())
+          on conflict (day, pid) do update set beers = scores.beers + 1, last_beer_at = now()`;
+        await sql`update players set glass = 0, drink_started_at = null, last_seen = now() where pid = ${me.pid}`;
+        return reply(true);
       }
-      await sql`
-        insert into scores (day, pid, beers, last_beer_at)
-        values ((now() at time zone 'America/Sao_Paulo')::date, ${me.pid}, 1, now())
-        on conflict (day, pid) do update set beers = scores.beers + 1, last_beer_at = now()`;
-      await sql`
-        update players set drink_started_at = case when ${next} then now() else null end, last_seen = now()
-        where pid = ${me.pid}`;
-      return send(res, 200, { ok: true, beers: await beersToday(sql, me.pid) });
     }
-
     send(res, 400, { error: 'action' });
   } catch (e) {
     console.error(e);

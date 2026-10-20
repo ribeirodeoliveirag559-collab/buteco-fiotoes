@@ -196,3 +196,21 @@ kbd { background: #ffffff22; border-radius: 4px; padding: 0 5px; font-size: .9em
 @media (max-width: 600px) {
   .status { top: 54px; } .round { width: 36px; height: 36px; font-size: 17px; } .hud-tr { gap: 4px; } .mini-logo { font-size: 14px; } #toast { top: 112px; } .hint { top: 112px; }
 }
+
+/* ---------- v2.1: pontos, vape, jukebox ---------- */
+.chips { display: flex; flex-direction: column; gap: 2px; }
+.chip { font-size: 12px; font-weight: 900; background: #ffffff14; border-radius: 99px; padding: 1px 8px; white-space: nowrap; }
+.chip b { color: var(--amber); }
+.round.vape { width: 64px; height: 64px; font-size: 30px; border: 2px solid #38e1ff88; background: radial-gradient(circle at 40% 30%, #123a4a, #07161d); box-shadow: 0 0 18px #38e1ff55; }
+#ytbox { position: fixed; right: 10px; top: 60px; width: 220px; background: #0b0710; border: 1px solid #8a6aff88; border-radius: 12px; overflow: hidden; z-index: 4; box-shadow: 0 6px 24px #000a; }
+.yt-head { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; font-size: 11px; font-weight: 800; color: #cbbcff; }
+.yt-head span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yt-head button { background: #ffffff1a; border: 0; border-radius: 6px; width: 24px; height: 20px; padding: 0; line-height: 1; }
+.yt-frame { width: 220px; height: 200px; background: #000; }
+.yt-frame iframe { width: 100%; height: 100%; display: block; }
+#ytbox.mini .yt-frame { height: 0; overflow: hidden; }
+.jb-input { width: 100%; background: #150b06; border: 2px solid #6b4a22; border-radius: 10px; color: var(--text); padding: 10px 12px; font: 700 15px var(--font); outline: none; margin: 4px 0 10px; }
+.jb-input:focus { border-color: var(--amber); }
+.jb-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 600px) { #ytbox { top: 104px; width: 180px; } .yt-frame { width: 180px; height: 160px; } }
+@media (pointer: coarse) and (max-height: 520px) { #ytbox { top: 54px; width: 160px; } .yt-frame { width: 160px; height: 120px; } }

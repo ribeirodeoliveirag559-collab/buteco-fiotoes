@@ -73,6 +73,7 @@
     { id: 'bravo', label: 'Bravo' },
     { id: 'piscadinha', label: 'Piscadinha' },
     { id: 'coracao', label: 'Apaixonado' },
+    { id: 'sedutor', label: 'Sedutor', hidden: true },
   ];
   const MOUTHS = [
     { id: 'sorriso', label: 'Sorriso' },
@@ -81,6 +82,7 @@
     { id: 'lingua', label: 'Sapeca' },
     { id: 'bigode', label: 'Bigodão' },
     { id: 'barba', label: 'Barbudo' },
+    { id: 'batom', label: 'Batom', hidden: true },
   ];
   const HAIRS = [
     { id: 'ondulado', label: 'Ondulado' },
@@ -90,6 +92,7 @@
     { id: 'mullet', label: 'Mullet' },
     { id: 'degrade', label: 'Degradê' },
     { id: 'oldmoney', label: 'Old Money' },
+    { id: 'longo', label: 'Longo', hidden: true },
   ];
 
   // ---------- Peças de desenho compartilhadas ----------
@@ -233,6 +236,37 @@
     return { sleeve: base, cuff: dk };
   }
 
+  function biquini(topColor, o) {
+    o = o || {};
+    return function (g) {
+      const { px, mx } = g;
+      const sk = g.skinC;
+      px(10, 28, 20, 17, sk); mx(10, 28, 2, 17, shade(sk, -14));
+      px(17, 28, 6, 1, g.neck);
+      if (!g.back) {
+        if (o.crop) { px(11, 30, 18, 7, topColor); mx(11, 36, 4, 1, topColor); px(15, 36, 10, 1, shade(topColor, -25)); px(19, 30, 2, 2, g.neck); }
+        else { mx(13, 31, 6, 2, topColor); mx(14, 33, 4, 1, topColor); mx(15, 34, 2, 1, topColor); px(19, 32, 2, 1, topColor); }
+        mx(15, 28, 1, 3, topColor);
+        px(20, 41, 1, 1, shade(sk, -45));
+        if (o.glitter) for (let i = 0; i < 9; i++) px(13 + ((i * 7) % 14), 31 + ((i * 3) % 5), 1, 1, '#fff6c8');
+      } else { px(10, 32, 20, 1, topColor); px(17, 28, 1, 4, topColor); px(22, 28, 1, 4, topColor); if (o.crop) px(11, 30, 18, 6, topColor); }
+      return { sleeve: null };
+    };
+  }
+  function vestido(color, glitter) {
+    return function (g) {
+      const { px, mx } = g;
+      const sk = g.skinC;
+      px(10, 28, 20, 17, sk); mx(10, 28, 2, 17, shade(sk, -14)); px(17, 28, 6, 1, g.neck);
+      px(11, 31, 18, 14, color); mx(11, 31, 2, 14, shade(color, -22));
+      mx(14, 28, 2, 3, color);
+      if (!g.back) { px(17, 31, 6, 1, sk); px(18, 32, 4, 1, sk); }
+      px(10, 45, 20, 8, color); mx(10, 45, 2, 8, shade(color, -22));
+      px(10, 52, 20, 1, shade(color, 40));
+      if (glitter) for (let i = 0; i < 22; i++) px(11 + ((i * 11) % 18), 33 + ((i * 5) % 19), 1, 1, '#fff2b0');
+      return { sleeve: null };
+    };
+  }
   const SHIRTS = [
     { id: 'cowboy', label: 'Cowboy comprida', draw: shirtCowboy },
     { id: 'branca', label: 'Camisa branca', draw: BRANCA },
@@ -247,6 +281,13 @@
     { id: 'xadrez-roxo', label: 'Xadrez roxa', draw: xadrez('#7d3fa8'), c: '#7d3fa8' },
     { id: 'xadrez-laranja', label: 'Xadrez laranja', draw: xadrez('#e07a1f'), c: '#e07a1f' },
     { id: 'sobretudo', label: 'Sobretudo', draw: sobretudo, hidden: true },
+    { id: 'biquini-rosa', label: 'Top', draw: biquini('#ff4f9d'), hidden: true },
+    { id: 'biquini-azul', label: 'Top', draw: biquini('#38b6ff'), hidden: true },
+    { id: 'biquini-amarelo', label: 'Top', draw: biquini('#ffd23a'), hidden: true },
+    { id: 'top-preto', label: 'Top', draw: biquini('#17171c', { crop: true, glitter: true }), hidden: true },
+    { id: 'top-neon', label: 'Top', draw: biquini('#7aff5a', { crop: true }), hidden: true },
+    { id: 'vestido-vermelho', label: 'Vestido', draw: vestido('#d0142e', true), hidden: true },
+    { id: 'vestido-dourado', label: 'Vestido', draw: vestido('#d9a52a', true), hidden: true },
   ];
 
   // ---------- CALÇAS ----------
@@ -270,7 +311,7 @@
       },
     };
   }
-  function bermuda(color, hem, monogram) {
+  function bermuda(color, hem, monogram, botY) {
     return {
       long: false, c: color,
       hip(g) {
@@ -290,7 +331,7 @@
       },
       leg(g, x0, dy) {
         const { px } = g;
-        const bot = 55 + dy;
+        const bot = (botY || 55) + dy;
         px(x0, 51, 8, bot - 51, color);
         px(x0 + (x0 < 20 ? 0 : 7), 51, 1, bot - 51, shade(color, -16));
         px(x0, bot - 1, 8, 1, hem);
@@ -309,6 +350,9 @@
     Object.assign({ id: 'jeans-claro', label: 'Jeans clara' }, pantsSolid('#7aa3d8', '#f4e7a8')),
     Object.assign({ id: 'bermuda-rosa', label: 'Bermuda rosa' }, bermuda('#ef6aa7', '#ff9cc7', false)),
     Object.assign({ id: 'bermuda-grife', label: 'Bermuda de grife' }, bermuda('#1f4fb0', '#f1d27a', true)),
+    Object.assign({ id: 'short-jeans', label: 'Short jeans', hidden: true }, bermuda('#5b86c4', '#b9d2ee', false, 53)),
+    Object.assign({ id: 'short-preto', label: 'Short', hidden: true }, bermuda('#16161a', '#c9a24a', false, 53)),
+    Object.assign({ id: 'short-dourado', label: 'Short', hidden: true }, bermuda('#d8a830', '#fff0a0', false, 53)),
   ];
 
   // ---------- CALÇADOS ----------
@@ -563,6 +607,12 @@
         px(14, 13, 12, 1, rgba(h, 0.5));
         px(16, 8, 5, 1, hl);
         break;
+      case 'longo':
+        px(12, 7, 16, 1, h); px(10, 8, 20, 5, h); px(11, 13, 18, 1, h);
+        mx(9, 10, 4, 25, h);
+        px(12, 13, 9, 2, h); px(21, 13, 2, 1, h); px(24, 13, 4, 2, h);
+        px(14, 9, 5, 1, hl); px(22, 8, 4, 1, hl); mx(10, 20, 1, 6, hd); mx(10, 30, 1, 4, hd);
+        break;
       case 'oldmoney':
         px(13, 8, 14, 1, h); px(11, 9, 18, 3, h); px(12, 12, 16, 1, h);
         mx(11, 12, 2, 6, h);
@@ -595,6 +645,9 @@
         px(12, 7, 16, 6, h); px(12, 13, 16, 3, h);
         px(12, 16, 16, 2, rgba(h, 0.6)); px(13, 18, 14, 2, rgba(h, 0.3)); px(16, 8, 5, 1, hl);
         break;
+      case 'longo':
+        px(12, 7, 16, 1, h); px(10, 8, 20, 29, h); px(14, 20, 4, 1, hd); px(22, 28, 5, 1, hd); px(13, 12, 5, 1, hl);
+        break;
       case 'oldmoney':
         px(12, 8, 16, 9, h); px(13, 17, 14, 3, rgba(h, 0.6));
         px(14, 10, 12, 1, hd); px(14, 13, 12, 1, hd); px(15, 9, 8, 1, hl);
@@ -615,6 +668,15 @@
           px(x, 16, 4, 4, white); px(x + 1, 17, 2, 3, pup);
           px(x + 1, 17, 1, 1, g.red ? '#ff9aa0' : '#fff');
         }
+        break;
+      case 'sedutor':
+        for (const x of [15, 22]) {
+          px(x, 17, 3, 1, '#2a1818');
+          px(x, 18, 3, 1, white); px(x + 1, 18, 1, 1, '#2f7bd6');
+          px(x, 19, 3, 1, 'rgba(120,60,60,.25)');
+        }
+        px(14, 16, 1, 1, '#2a1818'); px(25, 16, 1, 1, '#2a1818'); px(14, 17, 1, 1, '#2a1818'); px(25, 17, 1, 1, '#2a1818');
+        px(15, 14, 2, 1, brow); px(23, 14, 2, 1, brow); px(14, 15, 1, 1, brow); px(25, 15, 1, 1, brow);
         break;
       case 'sonolento':
         for (const x of [15, 22]) {
@@ -650,6 +712,10 @@
     const dk = '#6b2a2a', h = g.hair;
     switch (type) {
       case 'serio': px(17, 23, 6, 1, dk); break;
+      case 'batom':
+        px(17, 22, 1, 1, '#a8183a'); px(22, 22, 1, 1, '#a8183a');
+        px(18, 23, 4, 1, '#d4284c'); px(19, 24, 2, 1, '#b01a3a'); px(19, 23, 1, 1, '#ff9ab0');
+        break;
       case 'risada':
         px(16, 22, 8, 3, '#5a1a1a'); px(16, 22, 8, 1, '#fff'); px(18, 24, 4, 1, '#e8607a');
         break;
@@ -720,8 +786,8 @@
         shoe.draw(g, x0, dy);
         pants.leg(g, x0, dy);
       } else {
-        px(x0 + 1, 54 + dy, 6, 8, skinC);
-        px(x0 + 1, 54 + dy, 1, 8, shade(skinC, -14));
+        px(x0 + 1, 52 + dy, 6, 10, skinC);
+        px(x0 + 1, 52 + dy, 1, 10, shade(skinC, -14));
         pants.leg(g, x0, dy);
         shoe.draw(g, x0, dy);
       }
@@ -811,15 +877,27 @@
   function randomLook() {
     const pick = (a) => a[Math.floor(Math.random() * a.length)].id;
     return {
-      skin: pick(SKINS), hairColor: pick(HAIRCOLORS), hair: pick(HAIRS), eyes: pick(EYES), mouth: pick(MOUTHS),
-      shirt: pick(visible(SHIRTS)), pants: pick(PANTS), shoes: pick(SHOES), hat: pick(HATS), glasses: pick(GLASSES),
+      skin: pick(SKINS), hairColor: pick(HAIRCOLORS), hair: pick(visible(HAIRS)), eyes: pick(visible(EYES)), mouth: pick(visible(MOUTHS)),
+      shirt: pick(visible(SHIRTS)), pants: pick(visible(PANTS)), shoes: pick(SHOES), hat: pick(HATS), glasses: pick(GLASSES),
     };
   }
 
   FT.sprites = {
     W, H, get: getSprite, shade,
-    SKINS, HAIRCOLORS, EYES, MOUTHS, HAIRS, SHIRTS: visible(SHIRTS), PANTS, SHOES, HATS, GLASSES,
+    SKINS, HAIRCOLORS, EYES: visible(EYES), MOUTHS: visible(MOUTHS), HAIRS: visible(HAIRS), SHIRTS: visible(SHIRTS), PANTS: visible(PANTS), SHOES, HATS, GLASSES,
     DEFAULT_LOOK, sanitizeLook, randomLook,
+    BARMAID_LOOK: {
+      skin: 'clara', hairColor: 'loiro', hair: 'longo', eyes: 'sedutor', mouth: 'batom',
+      shirt: 'biquini-rosa', pants: 'short-jeans', shoes: 'sandalia-quadrada', hat: 'nenhum', glasses: 'nenhum',
+    },
+    DANCER_LOOKS: [
+      { skin: 'morena', hairColor: 'preto', hair: 'longo', eyes: 'sedutor', mouth: 'batom', shirt: 'top-preto', pants: 'short-dourado', shoes: 'sandalia-quadrada', hat: 'nenhum', glasses: 'nenhum' },
+      { skin: 'clara', hairColor: 'ruivo', hair: 'longo', eyes: 'sedutor', mouth: 'batom', shirt: 'vestido-vermelho', pants: 'short-preto', shoes: 'bico-fino', hat: 'nenhum', glasses: 'nenhum' },
+      { skin: 'marrom', hairColor: 'castanho', hair: 'longo', eyes: 'sedutor', mouth: 'batom', shirt: 'top-neon', pants: 'short-jeans', shoes: 'sandalia-quadrada', hat: 'nenhum', glasses: 'sol' },
+      { skin: 'bronze', hairColor: 'platinado', hair: 'longo', eyes: 'sedutor', mouth: 'batom', shirt: 'vestido-dourado', pants: 'short-preto', shoes: 'bico-fino', hat: 'nenhum', glasses: 'nenhum' },
+      { skin: 'escura', hairColor: 'preto', hair: 'longo', eyes: 'sedutor', mouth: 'batom', shirt: 'biquini-azul', pants: 'short-jeans', shoes: 'sandalia-quadrada', hat: 'nenhum', glasses: 'nenhum' },
+      { skin: 'morena', hairColor: 'loiro', hair: 'longo', eyes: 'sedutor', mouth: 'batom', shirt: 'biquini-amarelo', pants: 'short-dourado', shoes: 'sandalia-quadrada', hat: 'nenhum', glasses: 'nenhum' },
+    ],
     HOMEM_LOOK: {
       skin: 'morena', hairColor: 'preto', hair: 'curto', eyes: 'bravo', mouth: 'barba',
       shirt: 'sobretudo', pants: 'preta', shoes: 'bico-fino', hat: 'cowboy-preto', glasses: 'sol',

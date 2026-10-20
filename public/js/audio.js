@@ -79,6 +79,17 @@
       noise(0.7, 900, 0.7, 0.18, 'lowpass');
       tone(300, 0.5, 0.05, 'sine', 180);
     },
+    pour() {
+      if (!ok()) return;
+      noise(1.1, 1400, 0.8, 0.28, 'bandpass'); noise(1.0, 3200, 1.2, 0.1, 'highpass', 0.1);
+      for (let i = 0; i < 6; i++) tone(500 + i * 90, 0.12, 0.05, 'sine', 700 + i * 90, 0.15 + i * 0.13);
+    },
+    vape() {
+      if (!ok()) return;
+      tone(180, 0.35, 0.07, 'sine', 120);              // puxando
+      noise(1.6, 700, 0.5, 0.22, 'lowpass', 1.2);        // soltando a fumaça
+      tone(260, 0.9, 0.05, 'triangle', 140, 1.2);
+    },
     blip() {
       if (!ok()) return;
       tone(880, 0.07, 0.12, 'square');

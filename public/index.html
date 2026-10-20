@@ -67,12 +67,14 @@
     <div class="hud-tr">
       <button id="btn-board" class="round" title="Placar (Tab)">🏆</button>
       <button id="btn-chat" class="round touch-only" title="Conversar">💬</button>
-      <button id="btn-sound" class="round" title="Som">🔊</button>
+      <button id="btn-music" class="round" title="Música da jukebox">🎵</button>
+      <button id="btn-sound" class="round" title="Efeitos sonoros">🔊</button>
       <button id="btn-edit" class="round" title="Voltar ao guarda-roupa">👕</button>
     </div>
 
     <div id="status" class="status">
-      <div class="beer-count"><span id="beer-n">0</span><small>cervejas</small></div>
+      <div class="beer-count"><span id="beer-n">0</span><small>copos hoje</small></div>
+      <div class="chips"><span class="chip">⭐ <b id="pts-n">0</b> pts</span><span class="chip" id="vape-chip" hidden>💨 <b id="vape-n">0</b></span></div>
       <div class="level"><div id="level-label">Sóbrio</div><div class="bar"><i id="level-bar"></i></div></div>
     </div>
 
@@ -85,6 +87,7 @@
     <div id="joy" class="touch-only"><div id="joy-knob"></div></div>
 
     <div class="actions">
+      <button id="btn-vape" class="round vape" title="Cigarro eletrônico (F)" hidden>💨</button>
       <button id="btn-use" class="use" hidden>✋<span>FALAR</span></button>
       <button id="btn-smoke" class="smoke" hidden>🚬<span>FUMAR</span></button>
       <button id="btn-drink" class="drink" style="--p:0">
@@ -92,7 +95,7 @@
       </button>
     </div>
 
-    <div id="hint" class="hint"><kbd>WASD</kbd> andar · mouse olhar · segure <kbd>ESPAÇO</kbd> ou botão esquerdo pra beber · <kbd>E</kbd> falar · <kbd>Enter</kbd> chat · <kbd>Tab</kbd> placar</div>
+    <div id="hint" class="hint"><kbd>WASD</kbd> andar · mouse olhar · <kbd>E</kbd> falar com a Bella e pedir cerveja · clique na garrafa pra servir · segure <kbd>ESPAÇO</kbd> pra beber · <kbd>F</kbd> vape · <kbd>Tab</kbd> placar</div>
 
     <div id="dialog" hidden>
       <canvas id="dlg-face" width="72" height="72"></canvas>
@@ -104,6 +107,24 @@
     </div>
 
     <div id="toast"></div>
+  </div>
+
+  <div id="ytbox" hidden>
+    <div class="yt-head"><span id="yt-title">🎵</span><button id="yt-hide" title="Minimizar">▁</button></div>
+    <div class="yt-frame"><div id="yt-player"></div></div>
+  </div>
+
+  <div id="jukebox" class="modal" hidden>
+    <div class="modal-card">
+      <h2>🎵 Jukebox do Buteco</h2>
+      <p class="fine" style="margin-top:0">Cole o link de uma música do YouTube. Toca pra todo mundo que está no bar; quanto mais perto da jukebox (ou dentro do camarote), mais alto.</p>
+      <input id="jb-url" class="jb-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+      <div class="jb-row">
+        <button id="jb-play" class="primary small">▶ Tocar pra todos</button>
+        <button id="jb-stop" class="ghost">⏹ Parar</button>
+        <button id="jb-close" class="ghost">Fechar</button>
+      </div>
+    </div>
   </div>
 
   <div id="pause" hidden>

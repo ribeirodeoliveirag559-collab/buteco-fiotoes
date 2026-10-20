@@ -1,7 +1,7 @@
 // O bar em 3D: salão, balcão, mesas, luminárias com sombra, placar, jukebox e o canto escondido.
 import * as THREE from 'three';
 import * as TX from './textures.js';
-import { createAvatar, makeMug } from './avatar.js';
+import { createAvatar, makeMug, makeBottle } from './avatar.js';
 
 const FT = window.FT;
 
@@ -10,6 +10,11 @@ export const BAR = {
   spawn: { x: 3.2, z: 5.6 },
   npcPos: { x: -8.6, z: 5.4 },
   poster: { x: 5.6, y: 1.95, z: -6.93, w: 5.4, h: 2.6 },
+  maidPos: { x: 0.95, z: -6.15 },
+  serviceTable: { x: -0.35, z: -5.15 },
+  jukebox: { x: 9.2, z: -3.2 },
+  vipDoor: { x: 10, z: 0 },
+  vipCenter: { x: 14, z: 0 },
 };
 
 export function createBar(quality = 'high') {
@@ -67,7 +72,12 @@ export function createBar(quality = 'high') {
   wall(20, 0, -7, 0, brickTex, panelTex);                 // norte
   wall(20, 0, 7, Math.PI, brickTex, panelTex);            // sul
   wall(14, -10, 0, Math.PI / 2, brickTexS, panelTexS);    // oeste
-  wall(14, 10, 0, -Math.PI / 2, brickTexS, panelTexS);    // leste
+  wall(5.8, 10, -4.1, -Math.PI / 2, brickTexS, panelTexS);  // leste (norte da porta)
+  wall(5.8, 10, 4.1, -Math.PI / 2, brickTexS, panelTexS);   // leste (sul da porta)
+  {
+    const lint = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.15), M(brickTexS));
+    lint.position.set(9.995, 2.925, 0); lint.rotation.y = -Math.PI / 2; root.add(lint);
+  }
 
   // vigas do teto
   for (const z of [-4.5, 0, 4.5]) box(20, 0.22, 0.3, M(woodTex), 0, 3.38, z, root, false);
@@ -186,7 +196,7 @@ export function createBar(quality = 'high') {
   const posterLight = new THREE.SpotLight(0xfff0c8, 24, 8, 0.9, 0.5, 2);
   posterLight.position.set(P.x, 3.2, -4.8); posterLight.target.position.set(P.x, P.y, P.z); root.add(posterLight, posterLight.target);
 
-  function drawPoster(rows, day, meId, mode) {
+  function drawPoster(rows, day, meId, mode, lastWinner) {
     const g = pc.getContext('2d');
     g.fillStyle = '#e9dbb0'; g.fillRect(0, 0, 1024, 492);
     for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(120,90,40,${Math.random() * 0.1})`; g.fillRect(Math.random() * 1024, Math.random() * 492, 4 + Math.random() * 40, 2); }
@@ -203,7 +213,7 @@ export function createBar(quality = 'high') {
       g.fillText('Ninguém bebeu ainda…', 512, 270); g.fillText('seja o primeiro! 🍺', 512, 340);
     }
     rows.slice(0, 6).forEach((r, i) => {
-      const y = 190 + i * 49;
+      const y = 184 + i * 43;
       g.textAlign = 'left';
       g.font = '66px Nunito'; // placeholder para medir
       g.font = '900 40px Nunito, sans-serif';
@@ -216,7 +226,11 @@ export function createBar(quality = 'high') {
       g.font = '900 42px Bungee, Impact, sans-serif';
       g.fillText(`${r.beers} 🍺`, 950, y);
     });
-    if (mode === 'offline') { g.textAlign = 'center'; g.fillStyle = 'rgba(90,64,32,.7)'; g.font = '700 22px Nunito'; g.fillText('(placar local — sem conexão com o servidor)', 512, 470); }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#5a4020'; g.font = '800 23px Nunito, sans-serif';
+    g.fillText('⭐ TOP 5 entra no CAMAROTE · campeão do dia ganha um vape 💨', 512, 448);
+    if (lastWinner) { g.fillStyle = '#7a1c1c'; g.font = '900 26px Nunito, sans-serif'; g.fillText('🏆 Campeão de ' + lastWinner.day + ': ' + lastWinner.name + ' (' + lastWinner.beers + ' copos)', 512, 476); }
+    if (mode === 'offline') { g.fillStyle = 'rgba(90,64,32,.7)'; g.font = '700 20px Nunito'; g.fillText('(placar local — sem conexão com o servidor)', 512, 150); }
     pTex.needsUpdate = true;
   }
   drawPoster([], '', null);
@@ -227,8 +241,8 @@ export function createBar(quality = 'high') {
     m.position.set(x, y, z); m.rotation.y = ry; root.add(m);
     const fr = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.38, 0.04), M(woodTex)); fr.position.set(x, y, z - (Math.cos(ry) * 0.02)); fr.rotation.y = ry; root.add(fr);
   };
-  wp('MODÃO RAIZ', 'sexta tem!', '#3a1a5a', '#a02a4a', 9.96, 1.9, 1.2, -Math.PI / 2);
-  wp('CERVEJA GELADA', 'sempre', '#0a4a6a', '#2aa0b0', 9.96, 1.9, 3.0, -Math.PI / 2);
+  wp('MODÃO RAIZ', 'sexta tem!', '#3a1a5a', '#a02a4a', 9.96, 1.9, 3.4, -Math.PI / 2);
+  wp('CERVEJA GELADA', 'sempre', '#0a4a6a', '#2aa0b0', 9.96, 1.9, 5.3, -Math.PI / 2);
   wp('SERTANEJO', 'ao vivo', '#6a3a0a', '#d08a2a', -9.96, 1.9, -1.8, Math.PI / 2);
   wp('FIADO', 'só amanhã', '#5a0a0a', '#b02a1a', -9.96, 1.9, 0.6, Math.PI / 2);
 
@@ -250,7 +264,7 @@ export function createBar(quality = 'high') {
 
   // ---------------- plantas ----------------
   const leafMat = L({ color: 0x2e7d3a, side: THREE.DoubleSide });
-  for (const [x, z] of [[-9.1, -3.9], [9.1, 4.8], [-6.0, 6.4]]) {
+  for (const [x, z] of [[-9.1, -3.9], [9.1, 6.2], [-6.0, 6.4]]) {
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.18, 0.4, 10), L({ color: 0x7a3b22 })); pot.position.set(x, 0.2, z); pot.castShadow = true; root.add(pot);
     for (let i = 0; i < 9; i++) {
       const lf = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.9), leafMat);
@@ -301,12 +315,154 @@ export function createBar(quality = 'high') {
     s.userData = { t: i * 0.6 }; root.add(s); puffs.push(s);
   }
 
+  // ================= GARÇONETE + MESINHA DE SERVIÇO =================
+  const maid = createAvatar(FT.sprites.BARMAID_LOOK, { npc: true, name: 'Bella', curvy: true });
+  maid.root.position.set(BAR.maidPos.x, 0, BAR.maidPos.z);
+  maid.root.rotation.y = 0;
+  maid.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  root.add(maid.root);
+  circle(BAR.maidPos.x, BAR.maidPos.z, 0.45);
+  rect(1.55, -6.95, 2.3, -6.3); // geladeira
+  const maidSpot = new THREE.SpotLight(0xffd6e8, 26, 8, 0.55, 0.6, 2);
+  maidSpot.position.set(BAR.maidPos.x, 3.2, -4.4); maidSpot.target.position.set(BAR.maidPos.x, 1.0, BAR.maidPos.z);
+  root.add(maidSpot, maidSpot.target);
+  {
+    const fr = box(0.8, 1.55, 0.6, M(TX.toTex(TX.woodDark([210, 12, 22], 51)), { roughness: 0.4, metalness: 0.5 }), 1.9, 0.78, -6.6);
+    const glassDoor = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 1.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9fd8ff).multiplyScalar(1.4), transparent: true, opacity: 0.55 }));
+    glassDoor.position.set(1.9, 0.85, -6.29); root.add(glassDoor);
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const b = makeBottle(); b.scale.setScalar(0.55); b.position.set(1.68 + k * 0.22, 0.28 + i * 0.28, -6.38); root.add(b); }
+    const fl = new THREE.PointLight(0x9fd8ff, 4, 3, 2); fl.position.set(1.9, 1.0, -6.0); root.add(fl);
+  }
+  // mesinha alta: a garçonete deixa a garrafa aqui
+  const ST = BAR.serviceTable;
+  const stTop = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 24), M(woodTexL, { roughness: 0.4 }));
+  stTop.position.set(ST.x, 1.05, ST.z); stTop.castShadow = stTop.receiveShadow = true; root.add(stTop);
+  const stLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.03, 10), brass); stLeg.position.set(ST.x, 0.52, ST.z); stLeg.castShadow = true; root.add(stLeg);
+  const stBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.04, 18), brass); stBase.position.set(ST.x, 0.02, ST.z); root.add(stBase);
+  circle(ST.x, ST.z, 0.55);
+  const slotPos = [[0.2, 0.0], [-0.2, 0.0], [0.0, 0.2], [0.0, -0.2]].map(([dx, dz]) => ({ x: ST.x + dx, z: ST.z + dz, used: null }));
+  const bottles = [];
+  function spawnBottle() {
+    const slot = slotPos.find((sl) => !sl.used) || slotPos[0];
+    const b = makeBottle(); b.position.set(slot.x, 1.075, slot.z); b.scale.setScalar(0.001);
+    b.userData.spawnT = 0; b.userData.slot = slot; b.userData.isBottle = true;
+    slot.used = b; root.add(b); bottles.push(b);
+    return b;
+  }
+  function takeBottle(b) {
+    if (!b) return;
+    if (b.userData.slot) b.userData.slot.used = null;
+    root.remove(b); const i = bottles.indexOf(b); if (i >= 0) bottles.splice(i, 1);
+  }
+
+  // ================= CAMAROTE (só top 5) =================
+  const VX0 = 10.4, VX1 = 18, VZ = 6;
+  const vip = new THREE.Group(); root.add(vip);
+  const velvet = TX.toTex(TX.fabric('#3a1250'), { repeat: [4, 1.6] });
+  const velvetMat = M(velvet, { roughness: 1 });
+  const goldM = new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.9, roughness: 0.28 });
+  const vfloor = new THREE.Mesh(new THREE.PlaneGeometry(VX1 - 10, VZ * 2), M(TX.toTex(TX.checker(), { repeat: [2, 3] }), { roughness: 0.25, metalness: 0.2 }));
+  vfloor.rotation.x = -Math.PI / 2; vfloor.position.set((VX1 + 10) / 2, 0.005, 0); vfloor.receiveShadow = true; vip.add(vfloor);
+  const vceil = new THREE.Mesh(new THREE.PlaneGeometry(VX1 - 10, VZ * 2), M(TX.toTex(TX.fabric('#0f0618'), { repeat: [3, 5] }))); vceil.rotation.x = Math.PI / 2; vceil.position.set((VX1 + 10) / 2, 3.5, 0); vip.add(vceil);
+  const vwall = (w, x, z, ry, tile) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, 3.5), velvetMat); m.position.set(x, 1.75, z); m.rotation.y = ry; m.receiveShadow = true; vip.add(m); };
+  vwall(VZ * 2, VX1, 0, -Math.PI / 2);       // fundo (olha pra oeste)
+  vwall(VX1 - 10, 14, -VZ, 0);               // lado norte
+  vwall(VX1 - 10, 14, VZ, Math.PI);          // lado sul
+  vwall(VZ - 1.2, 10.02, -(VZ + 1.2) / 2, Math.PI / 2); // parede oeste (lado de dentro)
+  vwall(VZ - 1.2, 10.02, (VZ + 1.2) / 2, Math.PI / 2);
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.1), velvetMat); m.position.set(10.02, 2.95, 0); m.rotation.y = Math.PI / 2; vip.add(m); }
+  for (const y of [1.1, 3.4]) { box(VX1 - 10, 0.07, 0.07, goldM, 14, y, -VZ + 0.04, vip, false); box(VX1 - 10, 0.07, 0.07, goldM, 14, y, VZ - 0.04, vip, false); box(0.07, 0.07, VZ * 2, goldM, VX1 - 0.04, y, 0, vip, false); }
+  // moldura dourada da porta
+  for (const z of [-1.2, 1.2]) box(0.2, 2.5, 0.16, goldM, 10, 1.25, z, root, false);
+  box(0.2, 0.14, 2.56, goldM, 10, 2.5, 0, root, false);
+  // letreiros neon
+  const vipNeonMat = new THREE.MeshBasicMaterial({ map: TX.toTex(TX.neonSign([
+    { text: 'CAMAROTE', y: 92, size: 108, color: '#ffd23a', glow: '#ff9a00', core: '#fff6d0' },
+    { text: 'TOP 5 DO FIOTÕES', y: 205, size: 62, color: '#ff4fd8', glow: '#c000ff', core: '#ffe6ff' },
+  ], { w: 1024, h: 280 })), transparent: true, toneMapped: false });
+  const vipSignOut = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 0.63), vipNeonMat); vipSignOut.position.set(9.93, 2.88, 0); vipSignOut.rotation.y = -Math.PI / 2; root.add(vipSignOut);
+  const vipSignIn = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.42), vipNeonMat); vipSignIn.position.set(VX1 - 0.06, 2.55, 0); vipSignIn.rotation.y = -Math.PI / 2; vip.add(vipSignIn);
+  // cordão de veludo
+  const rope = new THREE.Group();
+  for (const z of [-0.95, 0.95]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.95, 10), goldM); p.position.set(9.75, 0.475, z); p.castShadow = true; rope.add(p); const k = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), goldM); k.position.set(9.75, 0.98, z); rope.add(k); }
+  const ropeLine = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.9, 10), new THREE.MeshStandardMaterial({ color: 0xb0102a, roughness: 0.6 }));
+  ropeLine.rotation.x = Math.PI / 2; ropeLine.position.set(9.75, 0.82, 0); rope.add(ropeLine);
+  root.add(rope);
+  // palco, sofás, mesinhas
+  const stage = box(2.3, 0.4, 6.6, M(TX.toTex(TX.checker('#18101e', '#3a2a46')), { roughness: 0.3, metalness: 0.3 }), 16.8, 0.2, 0, vip);
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0xff2fb0 });
+  const led = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 6.6), ledMat); led.position.set(15.63, 0.34, 0); vip.add(led);
+  rect(15.6, -3.4, 18, 3.4);
+  const leather = M(TX.toTex(TX.fabric('#6a0f1e'), { repeat: [1, 1] }), { roughness: 0.45 });
+  const couch = (x, z, ry) => {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+    box(2.2, 0.4, 0.8, leather, 0, 0.2, 0, g); box(2.2, 0.55, 0.22, leather, 0, 0.65, -0.3, g);
+    box(0.22, 0.5, 0.8, leather, -1.1, 0.45, 0, g); box(0.22, 0.5, 0.8, leather, 1.1, 0.45, 0, g);
+    for (let i = 0; i < 2; i++) box(0.9, 0.12, 0.62, M(TX.toTex(TX.fabric(i ? '#d9a52a' : '#2a0f3a'))), -0.5 + i, 0.46, 0.04, g);
+    vip.add(g);
+  };
+  couch(12.4, -5.35, 0); couch(15.2, -5.35, 0); couch(12.4, 5.35, Math.PI); couch(15.2, 5.35, Math.PI);
+  rect(11.2, -5.85, 16.4, -4.9); rect(11.2, 4.9, 16.4, 5.85);
+  const iceTables = [[12.4, -3.9], [12.4, 3.9], [14.6, -3.9], [14.6, 3.9]];
+  iceTables.forEach(([x, z]) => {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 20), goldM); t.position.set(x, 0.55, z); t.castShadow = true; vip.add(t);
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.53, 8), goldM); l.position.set(x, 0.27, z); vip.add(l);
+    const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.09, 0.2, 14), new THREE.MeshStandardMaterial({ color: 0xcfd6e0, metalness: 0.9, roughness: 0.2 })); bucket.position.set(x, 0.69, z); vip.add(bucket);
+    const bt = makeBottle(); bt.scale.setScalar(0.9); bt.position.set(x, 0.75, z); bt.rotation.z = 0.12; vip.add(bt);
+    circle(x, z, 0.5);
+  });
+  // caixas de som
+  const woofers = [];
+  for (const [x, z] of [[17.3, -5.4], [17.3, 5.4], [10.9, -5.4], [10.9, 5.4]]) {
+    box(0.7, 1.7, 0.6, L({ color: 0x120a18 }), x, 0.85, z, vip);
+    for (const [y, r] of [[0.5, 0.2], [1.2, 0.14]]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.04, 18), new THREE.MeshStandardMaterial({ color: 0x2a2a34, roughness: 0.5 }));
+      w.rotation.z = Math.PI / 2; w.position.set(x - 0.32, y, z); vip.add(w); woofers.push(w);
+    }
+    circle(x, z, 0.5);
+  }
+  // globo de espelhos + luzes coloridas
+  const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 2), new THREE.MeshStandardMaterial({ color: 0xdcdcf0, metalness: 1, roughness: 0.12, flatShading: true }));
+  ball.position.set(14, 3.0, 0); vip.add(ball);
+  const ballCord = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.6, 5), L({ color: 0x111111 })); ballCord.position.set(14, 3.4, 0); vip.add(ballCord);
+  const spots = [];
+  for (let i = 0; i < 4; i++) {
+    const sp = new THREE.SpotLight(0xffffff, 40, 12, 0.5, 0.5, 1.6);
+    sp.position.set(11.5 + i * 1.8, 3.4, (i % 2 ? 3 : -3)); sp.target.position.set(14, 0, 0);
+    vip.add(sp, sp.target); spots.push(sp);
+  }
+  const vipFill = new THREE.PointLight(0xff7acb, 8, 9, 2); vipFill.position.set(14, 2.6, 0); vip.add(vipFill);
+  vip.add(new THREE.AmbientLight(0x4a2a64, 0.9));
+
+  // dançarinas
+  const dancers = [];
+  const spots6 = [[16.8, -2.4, 0.4, true], [16.8, 0, 0.4, true], [16.8, 2.4, 0.4, true], [13.3, -2.3, 0, false], [13.6, 2.2, 0, false], [12.2, 0.2, 0, false]];
+  FT.sprites.DANCER_LOOKS.forEach((lk, i) => {
+    const av = createAvatar(lk, { npc: true, name: '', noName: true, curvy: true });
+    const [x, z, y, onStage] = spots6[i];
+    av.root.position.set(x, y, z);
+    av.root.rotation.y = onStage ? -Math.PI / 2 : (i % 2 ? 2.2 : -2.2);
+    av.st.dance = 1; av.st.seed = i * 1.7;
+    av.root.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    vip.add(av.root); dancers.push(av);
+    if (!onStage) circle(x, z, 0.4);
+  });
+
+  const vipBlock = { x0: 9.55, z0: -1.0, x1: 10.5, z1: 1.0, off: false };
+  colliders.push(vipBlock);
+  function setVipOpen(open) { vipBlock.off = !!open; rope.visible = !open; }
+  const inVip = (p) => p.x > 10.3;
+
   // ---------------- colisão ----------------
   function collide(p, r = 0.3) {
     const H = BAR.half;
-    p.x = Math.max(-H.x, Math.min(H.x, p.x));
     p.z = Math.max(H.zMin, Math.min(H.zMax, p.z));
+    if (p.x > H.x) {
+      if (p.x < 10.4) { if (Math.abs(p.z) > 0.95) p.x = p.x < 10 ? H.x : 10.4; }
+      else { p.z = Math.max(-5.6, Math.min(5.6, p.z)); p.x = Math.min(p.x, 17.5); }
+    } else p.x = Math.max(-H.x, p.x);
     for (const c of colliders) {
+      if (c.off) continue;
       if (c.c) {
         const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), m = c.r + r;
         if (d < m) { const k = d < 1e-4 ? 1 : m / d; p.x = c.x + dx * k; p.z = c.z + dz * k; }
@@ -325,7 +481,34 @@ export function createBar(quality = 'high') {
 
   // ---------------- animação do cenário ----------------
   let flick = 1;
+  let winkT = 3, winkOn = 0, hue = 0;
   function update(dt, t, playerPos) {
+    // garçonete: olha pro cliente, pisca e balança
+    maid.update(dt);
+    if (playerPos) {
+      const dx = playerPos.x - BAR.maidPos.x, dz = playerPos.z - BAR.maidPos.z;
+      const want = Math.atan2(dx, dz);
+      const near = Math.hypot(dx, dz) < 7;
+      maid.root.rotation.y += ((near ? Math.max(-1.1, Math.min(1.1, want)) : 0) - maid.root.rotation.y) * Math.min(1, dt * 3);
+    }
+    maid.root.position.y = Math.sin(t * 1.3) * 0.006;
+    maid.P.head.rotation.z = Math.sin(t * 0.9) * 0.07;
+    winkT -= dt; if (winkT < 0) { winkOn = 0.32; winkT = 3.5 + Math.random() * 4; }
+    if (winkOn > 0) { winkOn -= dt; maid.setWink(true); } else maid.setWink(false);
+    for (const b of bottles) { const u = b.userData; if (u.spawnT < 1) { u.spawnT = Math.min(1, u.spawnT + dt * 3); const k = 1 - Math.pow(1 - u.spawnT, 3); b.scale.setScalar(Math.max(0.001, k * (1 + 0.12 * Math.sin(u.spawnT * Math.PI)))); } }
+    // camarote
+    hue = (hue + dt * 0.18) % 1;
+    ball.rotation.y += dt * 0.7;
+    spots.forEach((sp, i) => {
+      sp.color.setHSL((hue + i * 0.25) % 1, 0.95, 0.55);
+      sp.target.position.set(14 + Math.cos(t * 0.8 + i * 1.6) * 3.2, 0, Math.sin(t * 1.1 + i * 1.6) * 3.8);
+    });
+    vipFill.color.setHSL((hue + 0.5) % 1, 0.9, 0.6);
+    ledMat.color.setHSL((hue * 2) % 1, 1, 0.55);
+    const beat = 0.5 + 0.5 * Math.sin(t * 8.3);
+    woofers.forEach((w) => w.scale.set(1, 1 + beat * 0.25, 1 + beat * 0.25));
+    vipNeonMat.color.setScalar(1.7 + 0.4 * Math.sin(t * 3));
+    dancers.forEach((d) => d.update(dt));
     const f = Math.sin(t * 2.1) > 0.995 || Math.floor(t * 11) % 53 === 0 ? 0.35 : 1;
     flick += (f - flick) * Math.min(1, dt * 30);
     neonMat.color.setScalar((0.75 + 0.25 * flick) * 2.3);
@@ -349,5 +532,5 @@ export function createBar(quality = 'high') {
     lampSpots.forEach((s, i) => { s.castShadow = on && i < 5; });
   }
 
-  return { scene, colliders, collide, update, npc, drawPoster, lampSpots, setShadows, rootGroup: root };
+  return { scene, colliders, collide, update, npc, maid, dancers, drawPoster, lampSpots, setShadows, rootGroup: root, spawnBottle, takeBottle, bottles, setVipOpen, inVip };
 }

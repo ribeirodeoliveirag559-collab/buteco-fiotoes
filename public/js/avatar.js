@@ -43,7 +43,7 @@ function sideHead(skin, hair, hairId, rows) {
   g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(6, 8, 4, 4); // orelha
   return c;
 }
-const HAIR_ROWS = { careca: 0, curto: 5, degrade: 5, oldmoney: 5, topete: 5, ondulado: 16, mullet: 16 };
+const HAIR_ROWS = { careca: 0, curto: 5, degrade: 5, oldmoney: 5, topete: 5, ondulado: 16, mullet: 16, longo: 16 };
 
 export function makeMug() {
   const g = new THREE.Group();
@@ -61,6 +61,26 @@ export function makeMug() {
   g.add(glass, base, liquid, foam, handle);
   g.userData = { liquid, foam, setLevel(v) { liquid.scale.y = Math.max(0.001, v); liquid.visible = v > 0.01; foam.position.y = -0.058 + 0.115 * v + 0.012; foam.visible = v > 0.04; } };
   g.userData.setLevel(1);
+  return g;
+}
+export function makeBottle() {
+  const g = new THREE.Group();
+  const glass = new THREE.MeshStandardMaterial({ color: 0x5a3410, roughness: 0.2, metalness: 0.1, emissive: 0x2a1404, emissiveIntensity: 0.5 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.2, 14), glass); body.position.y = 0.1;
+  const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.036, 0.06, 14), glass); shoulder.position.y = 0.23;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.07, 10), glass); neck.position.y = 0.295;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.014, 10), new THREE.MeshStandardMaterial({ color: 0xe8c040, metalness: 0.8, roughness: 0.3 })); cap.position.y = 0.335;
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(0.0415, 0.0415, 0.08, 14, 1, true), new THREE.MeshStandardMaterial({ color: 0xf1e3b0, roughness: 0.8, side: THREE.DoubleSide })); label.position.y = 0.1;
+  [body, shoulder, neck, cap, label].forEach((m) => { m.castShadow = true; g.add(m); });
+  return g;
+}
+export function makeVape() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.115, 0.018), new THREE.MeshStandardMaterial({ color: 0x1b1d26, roughness: 0.3, metalness: 0.6 }));
+  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.011, 0.028, 8), new THREE.MeshStandardMaterial({ color: 0xcfd6e0, metalness: 0.7, roughness: 0.3 })); tip.position.y = 0.07;
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.0075, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(0x35e0ff).multiplyScalar(2.2) })); led.position.set(0, -0.045, 0.01);
+  g.add(body, tip, led);
+  g.userData = { led };
   return g;
 }
 export function makeJoint() {
@@ -134,6 +154,11 @@ function hairMeshes(id, color) {
       add(0.05, H * 0.72, H * 1.0, H / 2 + 0.03, -0.02, 0); add(0.05, H * 0.72, H * 1.0, -H / 2 - 0.03, -0.02, 0);
       add(H * 1.1, H * 0.78, 0.06, 0, -0.03, -H / 2 - 0.03);
       break;
+    case 'longo':
+      add(H * 1.14, 0.14, H * 1.14, 0, H / 2 - 0.005, 0);
+      add(0.05, H * 1.5, H * 0.95, H / 2 + 0.03, -H * 0.5, -0.02); add(0.05, H * 1.5, H * 0.95, -H / 2 - 0.03, -H * 0.5, -0.02);
+      add(H * 1.12, H * 2.1, 0.07, 0, -H * 0.95, -H / 2 - 0.04);
+      break;
     case 'mullet':
       add(H * 1.05, 0.09, H * 1.05, 0, H / 2 - 0.005, 0);
       add(H * 0.95, H * 1.25, 0.06, 0, -H * 0.42, -H / 2 - 0.03);
@@ -148,7 +173,7 @@ export function createAvatar(lookIn, opts = {}) {
   const model = new THREE.Group(); // inclinações (bêbado, nocaute)
   root.add(model);
   const P = {}; // peças
-  let look = null, red = false, disposables = [];
+  let look = null, red = false, wink = false, disposables = [];
   const st = { speed: 0, drink: 0, smoke: 0, ko: 0, drunk: 0, phase: 0, t: Math.random() * 10 };
   let nameSprite = null, bubble = null, bubbleUntil = 0, nameText = opts.name || '';
 
@@ -178,6 +203,8 @@ export function createAvatar(lookIn, opts = {}) {
     const faceBack = crop(up, 12, 10, 16, 16);
     const redLook = S.get(bare, { dir: 'down', red: true });
     const faceFrontRed = crop(redLook, 12, 10, 16, 16);
+    const winkLook = S.get(Object.assign({}, bare, { eyes: 'piscadinha' }), { dir: 'down' });
+    const faceFrontWink = crop(winkLook, 12, 10, 16, 16);
     const torsoF = crop(down, 10, 28, 20, 23), torsoB = crop(up, 10, 28, 20, 23);
     const shirtC = sample(torsoF, 1, 6);
     const rows = HAIR_ROWS[hairId] ?? 5;
@@ -198,7 +225,7 @@ export function createAvatar(lookIn, opts = {}) {
     hairMeshes(hairId, hairC).forEach((h) => { headG.add(h); track(h.geometry); track(h.material); });
     const hm = hatMesh(look.hat);
     if (hm) { hm.position.y = HEAD / 2 - 0.01; headG.add(hm); }
-    P.faceMat = headMats[4]; P.faceNormal = headMats[4]; P.faceRed = mkMat(faceFrontRed);
+    P.faceMat = headMats[4]; P.faceNormal = headMats[4]; P.faceRed = mkMat(faceFrontRed); P.faceWink = mkMat(faceFrontWink);
     model.add(headG);
     P.head = headG;
 
@@ -214,6 +241,13 @@ export function createAvatar(lookIn, opts = {}) {
     model.add(torso);
     P.torso = torso;
 
+    // saia do vestido
+    if (look.shirt && look.shirt.startsWith('vestido')) {
+      const sc = sample(torsoF, 3, 20);
+      const skirt = new THREE.Mesh(track(new THREE.CylinderGeometry(TORSO_W * 0.62, TORSO_W * 0.86, 0.34, 14)), mkMat(sc));
+      skirt.position.y = LEG_H - 0.04; skirt.castShadow = true;
+      model.add(skirt);
+    }
     // casaco comprido (HOMEM)
     if (look.shirt === 'sobretudo') {
       const coat = new THREE.Mesh(track(new THREE.BoxGeometry(TORSO_W + 0.04, 0.55, TORSO_D + 0.05)), mkMat('#2c2824'));
@@ -243,6 +277,7 @@ export function createAvatar(lookIn, opts = {}) {
     P.armR.add(P.hand);
     P.mug = makeMug(); P.mug.position.set(0, 0.0, 0.0); P.mug.visible = false; P.hand.add(P.mug);
     P.joint = makeJoint(); P.joint.position.set(0, 0, 0.03); P.joint.visible = false; P.hand.add(P.joint);
+    P.vape = makeVape(); P.vape.position.set(0, 0.02, 0.03); P.vape.visible = false; P.hand.add(P.vape);
 
     // pernas
     const mkLeg = (x0, sx) => {
@@ -281,13 +316,20 @@ export function createAvatar(lookIn, opts = {}) {
     };
     P.legL = mkLeg(21, 1);
     P.legR = mkLeg(11, -1);
+    if (opts.curvy) {
+      P.legL.scale.x = P.legR.scale.x = 1.22; P.legL.position.x = 0.16; P.legR.position.x = -0.16;
+      torso.scale.set(1.0, 1.0, 1.0);
+      const hips = new THREE.Mesh(track(new THREE.BoxGeometry(TORSO_W * 1.2, 0.16, TORSO_D * 1.2)), mkMat(sample(crop(down, 11, 46, 18, 5), 4, 2)));
+      hips.position.y = LEG_H + 0.02; hips.castShadow = true; model.add(hips);
+      headG.scale.setScalar(0.94);
+    }
     applyRed();
   }
 
   function applyRed() {
     if (!P.head) return;
     const head = P.head.children[0];
-    head.material[4] = red ? P.faceRed : P.faceNormal;
+    head.material[4] = wink ? P.faceWink : red ? P.faceRed : P.faceNormal;
   }
 
   function makeNameSprite() {
@@ -335,6 +377,7 @@ export function createAvatar(lookIn, opts = {}) {
     get look() { return look; },
     setLook(lk) { build(lk); },
     setRed(v) { if (v !== red) { red = v; applyRed(); } },
+    setWink(v) { if (v !== wink) { wink = v; applyRed(); } },
     setName(n) { nameText = n; if (!opts.noName) makeNameSprite(); },
     say,
     showName(v) { if (nameSprite) nameSprite.visible = v; },
@@ -344,27 +387,38 @@ export function createAvatar(lookIn, opts = {}) {
       st.phase += dt * (3 + sp * 7);
       const sw = Math.sin(st.phase) * 0.75 * Math.min(1, sp * 1.4);
       const idle = Math.sin(st.t * 1.6) * 0.03;
-      const armPose = Math.max(st.drink, st.smoke);
+      const armPose = Math.max(st.drink, st.smoke, st.vape || 0);
       if (P.legL) {
         P.legL.rotation.x = sw; P.legR.rotation.x = -sw;
         P.armL.rotation.x = -sw * 0.8 + idle;
-        const target = st.drink ? -1.95 : st.smoke ? -2.05 : sw * 0.8 + idle;
+        const target = st.drink ? -1.95 : st.smoke || st.vape ? -2.05 : sw * 0.8 + idle;
         P.armR.rotation.x += (target - P.armR.rotation.x) * Math.min(1, dt * 10);
         P.armR.rotation.z = armPose ? 0.15 : 0;
         P.armL.rotation.z = -0.04; if (!armPose) P.armR.rotation.z = 0.04;
         P.head.rotation.x += ((st.drink ? -0.4 : 0.0) + Math.sin(st.t * 0.8) * 0.02 - P.head.rotation.x) * Math.min(1, dt * 8);
         P.head.rotation.z = Math.sin(st.t * 1.3) * 0.1 * st.drunk;
-        P.mug.visible = !!st.drink; P.joint.visible = !!st.smoke;
+        P.mug.visible = !!st.drink; P.joint.visible = !!st.smoke; P.vape.visible = !!st.vape;
+        if (st.vape) P.vape.rotation.set(-P.armR.rotation.x + 0.2, 0, 0);
         if (st.drink) P.mug.rotation.set(-P.armR.rotation.x - 0.35, 0, 0);
         if (st.smoke) { P.joint.rotation.set(-P.armR.rotation.x, 0, 0); P.joint.userData.ember.scale.setScalar(1 + Math.sin(st.t * 12) * 0.2); }
         const bob = Math.abs(Math.sin(st.phase)) * 0.04 * Math.min(1, sp * 1.4);
         torsoBob(bob);
       }
+      // danca (camarote)
+      if (st.dance && P.legL) {
+        const d = st.t * 5.2 + (st.seed || 0);
+        P.legL.rotation.x = Math.sin(d) * 0.32; P.legR.rotation.x = -Math.sin(d) * 0.32;
+        P.armL.rotation.x = -2.6 + Math.sin(d * 0.9) * 0.4; P.armL.rotation.z = -0.5 - Math.sin(d) * 0.3;
+        P.armR.rotation.x = -2.6 + Math.cos(d * 0.9) * 0.4; P.armR.rotation.z = 0.5 + Math.cos(d) * 0.3;
+        model.rotation.y = Math.sin(d * 0.5) * 0.45;
+        model.position.y = Math.abs(Math.sin(d)) * 0.05;
+        P.head.rotation.z = Math.sin(d * 0.5) * 0.14;
+      } else if (model.rotation.y) model.rotation.y *= 0.9;
       // bêbado: balanço do corpo todo / nocaute: deitado
       const koT = st.ko;
       model.rotation.z = Math.sin(st.t * 1.7) * 0.09 * st.drunk * (1 - koT);
       model.rotation.x += ((koT ? -Math.PI / 2 : Math.sin(st.t * 1.1) * 0.05 * st.drunk) - model.rotation.x) * Math.min(1, dt * 6);
-      model.position.y += ((koT ? 0.18 : 0) - model.position.y) * Math.min(1, dt * 6);
+      if (!st.dance) model.position.y += ((koT ? 0.18 : 0) - model.position.y) * Math.min(1, dt * 6);
       if (bubble && performance.now() > bubbleUntil) { root.remove(bubble); bubble.material.map.dispose(); bubble.material.dispose(); bubble = null; }
     },
     dispose() { clear(); if (nameSprite) nameSprite.material.map.dispose(); },

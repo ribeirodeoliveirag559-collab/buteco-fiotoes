@@ -16,4 +16,6 @@ export const api = {
   join: (b) => call('/api/join', b),
   drink: (b) => call('/api/drink', b),
   ranking: () => call('/api/ranking'),
+  shop: (b) => call('/api/shop', b),
+  vape: (b) => call('/api/vape', b),
 };

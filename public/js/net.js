@@ -17,6 +17,13 @@
     });
   }
 
+  // histórico curto de conexão/queda (fica em FT.netLog e aparece no diagnóstico)
+  function netLog(msg) {
+    const l = (FT.netLog = FT.netLog || []);
+    l.push(new Date().toTimeString().slice(0, 8) + ' ' + msg);
+    if (l.length > 40) l.shift();
+  }
+
   function createNet(opts) {
     const { room, sid, cfg } = opts;
     let meta = opts.meta;
@@ -68,8 +75,14 @@
       if (!window.supabase || !window.supabase.createClient) throw new Error('cliente do Supabase não carregou');
       const client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, lock: async (_n, _t, fn) => await fn() },
-        realtime: { params: { eventsPerSecond: 20 }, timeout: 30000 },
+        realtime: { params: { eventsPerSecond: 20 }, timeout: 30000, heartbeatIntervalMs: 12000, worker: true },
       });
+      const rt = client.realtime;
+      if (rt) {
+        if (rt.onOpen) rt.onOpen(() => netLog('socket aberto'));
+        if (rt.onClose) rt.onClose((e) => netLog('socket FECHOU' + (e && e.code != null ? ' (código ' + e.code + (e.reason ? ', ' + e.reason : '') + ')' : '')));
+        if (rt.onError) rt.onError((e) => netLog('erro do socket' + (e && e.message ? ': ' + e.message : '')));
+      }
       const ch = client.channel(room, { config: { broadcast: { self: false, ack: false }, presence: { key: sid } } });
       const onMsg = safe(H.onMsg), onPeer = safe(H.onPeer), onUpd = safe(H.onPeerUpdate), onLeave = safe(H.onLeave);
       ch.on('broadcast', { event: 'm' }, ({ payload }) => onMsg(payload));
@@ -91,7 +104,7 @@
 
       let trackTimer = null, lastTrack = 0, pending = false, closed = false;
       const doTrack = () => { pending = false; lastTrack = Date.now(); ch.track(meta).catch((e) => console.warn('[net] track falhou', e)); };
-      let first = true;
+      let first = true, downTimer = null;
       try {
         await new Promise((resolve, reject) => {
           let lastBad = '';
@@ -103,8 +116,11 @@
               else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') lastBad = status + (err && err.message ? ': ' + err.message : '');
             } else if (!closed) {
               // quedas e voltas depois de conectado (rede móvel, tela bloqueada...): o cliente reconecta sozinho
-              if (status === 'SUBSCRIBED') { H.onStatus('online'); doTrack(); }
-              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') H.onStatus('error', status);
+              netLog('canal ' + status + (err && err.message ? ' — ' + err.message : ''));
+              if (status === 'SUBSCRIBED') { clearTimeout(downTimer); downTimer = null; H.onStatus('online'); doTrack(); }
+              else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                if (!downTimer) downTimer = setTimeout(() => { downTimer = null; if (!closed) H.onStatus('error', status); }, 4000);
+              }
             }
           }, 30000);
         });
@@ -113,8 +129,15 @@
         throw e;
       }
       doTrack();
-      const onVis = () => { if (!document.hidden && !closed) doTrack(); }; // voltou pro app: avisa que está aqui
+      const wake = (why) => { // voltou pro app / voltou a internet: confere o socket e reconecta na hora se caiu
+        if (closed) return;
+        try { if (client.realtime && client.realtime.isConnected && !client.realtime.isConnected()) { netLog('religando (' + why + ')'); client.realtime.connect(); } } catch (e) { /* ok */ }
+        doTrack();
+      };
+      const onVis = () => { if (!document.hidden) wake('voltou pro app'); };
+      const onNet = () => wake('internet voltou');
       document.addEventListener('visibilitychange', onVis);
+      window.addEventListener('online', onNet);
       return {
         mode: 'online',
         send: (d) => { ch.send({ type: 'broadcast', event: 'm', payload: d }); },
@@ -124,7 +147,7 @@
           pending = true;
           trackTimer = setTimeout(doTrack, Math.max(0, 1500 - (Date.now() - lastTrack)));
         },
-        close: () => { closed = true; clearTimeout(trackTimer); document.removeEventListener('visibilitychange', onVis); try { client.removeChannel(ch); } catch (e) { /* ok */ } },
+        close: () => { closed = true; clearTimeout(trackTimer); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('online', onNet); try { client.removeChannel(ch); } catch (e) { /* ok */ } },
       };
     }
 
@@ -175,6 +198,8 @@
     add('Internet do navegador: ' + (navigator.onLine ? 'ligada' : 'DESLIGADA') + (c.effectiveType ? ' (' + c.effectiveType + (c.saveData ? ', economia de dados LIGADA' : '') + ')' : ''));
     add('Página: ' + location.origin);
     add('Tempo real: ' + (FT.netMode || '?') + (FT.netError ? ' | último erro: ' + FT.netError : ''));
+    const hist = (FT.netLog || []).slice(-8);
+    if (hist.length) add('Histórico recente:\n  ' + hist.join('\n  '));
     add('Biblioteca do Supabase: ' + (window.supabase && window.supabase.createClient ? 'carregada' : 'NÃO carregou'));
     const url = cfg && cfg.SUPABASE_URL, key = cfg && cfg.SUPABASE_ANON_KEY;
     if (!url || !key) { add('Config do servidor: SEM chaves do Supabase'); return L.join('\n'); }

@@ -191,6 +191,7 @@ export function createWardrobe(quality, renderer, look) {
       t = tt;
       spin += (spinTarget - spin) * Math.min(1, dt * 8);
       avatar.root.rotation.y = spin + (dragging ? 0 : Math.sin(t * 0.5) * 0.12);
+      avatar.st.mouth = avatar.st.smoke && (t % 4.5) < 1.7 ? 1 : 0; // tragada de vez em quando
       avatar.update(dt);
       bulbLight.intensity = (hi ? 16 : 13) * (0.96 + Math.sin(t * 17) * 0.02 + (Math.sin(t * 2.3) > 0.985 ? -0.3 : 0));
       const pos = dust.geometry.attributes.position;

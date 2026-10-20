@@ -548,3 +548,6 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 
 /* miniaturas 3D das peças (suaves, não pixeladas) */
 .opt canvas { image-rendering: auto; background: radial-gradient(circle at 50% 38%, #6a4a30, #2f1d10); }
+
+.round.throw { border-color: #ff6a6a99; background: radial-gradient(circle at 40% 30%, #5a1a1a, #1d0606); box-shadow: 0 0 18px #ff3d3d55; }
+.round.throw .ic { color: #ffb0b0; }

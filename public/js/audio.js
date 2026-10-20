@@ -90,6 +90,11 @@
       noise(1.6, 700, 0.5, 0.22, 'lowpass', 1.2);        // soltando a fumaça
       tone(260, 0.9, 0.05, 'triangle', 140, 1.2);
     },
+    glass() {
+      if (!ok()) return;
+      noise(0.35, 4200, 0.9, 0.45, 'highpass'); noise(0.18, 2500, 1.5, 0.3, 'bandpass', 0.02);
+      for (let i = 0; i < 6; i++) tone(2600 + Math.random() * 2600, 0.12, 0.05, 'sine', null, 0.04 + i * 0.05);
+    },
     blip() {
       if (!ok()) return;
       tone(880, 0.07, 0.12, 'square');

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { rbox } from './shapes.js';
 import { toTex, straw, noise } from './textures.js';
 import { makeHat } from './gear-hats.js';
+import { paintFace, paintSide, paintTop, hairTexture } from './face.js';
 import { makeShoe } from './gear-shoes.js';
 import { NEW_SHIRTS, buildTorso, buildArm, buildPelvis, buildLeg, hasPants } from './gear-cloth.js';
 
@@ -13,6 +14,12 @@ const S = FT.sprites;
 // medidas em metros
 const HEAD = 0.4, NECK = 0.04, TORSO_H = 0.6, TORSO_W = 0.54, TORSO_D = 0.27, LEG_H = 0.74, LEG_W = 0.235, ARM_L = 0.6, ARM_W = 0.14;
 const SHOULDER_Y = LEG_H + TORSO_H - 0.05;
+// alvos do braço direito (espaço do corpo): boca e altura do peito
+const _DOWN = new THREE.Vector3(0, -1, 0);
+const _SH = new THREE.Vector3(-(TORSO_W / 2 + ARM_W / 2), SHOULDER_Y, 0);
+const _MOUTH = new THREE.Vector3(-0.03, LEG_H + TORSO_H + NECK + HEAD * 0.28, HEAD / 2 + 0.2).sub(_SH).normalize();
+const _CHEST = new THREE.Vector3(-0.16, LEG_H + TORSO_H * 0.62, 0.36).sub(_SH).normalize();
+const _AQ = new THREE.Quaternion(), _IQ = new THREE.Quaternion(), _DQ = new THREE.Quaternion(), _E = new THREE.Euler();
 export const EYE_HEIGHT = LEG_H + TORSO_H + NECK + HEAD * 0.55;
 
 
@@ -149,11 +156,11 @@ export function hatMesh(id) {
 function hairMeshes(id, color, underHat = false) {
   const out = [];
   if (id === 'careca') return out;
-  const m = lam({ color, map: toTex(noise(color, 0.2), { nearest: true }) });
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: toTex(hairTexture(color), { aniso: 8 }), roughness: 0.62 });
   const H = HEAD;
   const add = (w, h, d, x, y, z, rx = 0, top = false) => {
     if (top && underHat) return; // o chapéu tampa o cabelo do topo da cabeça
-    const b = new THREE.Mesh(rbox(w, h, d), m);
+    const b = new THREE.Mesh(rbox(w, h, d, Math.min(w, h, d) * 0.45), m);
     b.position.set(x, y, z); b.rotation.x = rx; b.castShadow = true; out.push(b);
   };
   switch (id) {
@@ -231,8 +238,11 @@ export function createAvatar(lookIn, opts = {}) {
     const sideC = sideHead(skinC, hairC, hairId, rows);
 
     // cabeça
-    const headMats = [mkMat(sideC), mkMat(sideC), mkMat(topC), mkMat(skinC), mkMat(faceFront), mkMat(faceBack)];
-    const head = new THREE.Mesh(track(rbox(HEAD, HEAD, HEAD)), headMats);
+    const underHat = !!(look.hat && look.hat !== 'nenhum');
+    const hm2 = (cv) => track(new THREE.MeshStandardMaterial({ map: track(toTex(cv, { aniso: 8 })), roughness: 0.72 }));
+    const sideHi = paintSide(look, skinC, hairC), backHi = paintSide(look, skinC, hairC, true), topHi = paintTop(look, skinC, hairC);
+    const headMats = [hm2(sideHi), hm2(sideHi), hm2(topHi), mkMat(skinC), hm2(paintFace(look, skinC, hairC, { underHat })), hm2(backHi)];
+    const head = new THREE.Mesh(track(rbox(HEAD, HEAD, HEAD, HEAD * 0.3)), headMats);
     head.castShadow = true;
     const headG = new THREE.Group();
     headG.position.y = LEG_H + TORSO_H + NECK + HEAD / 2;
@@ -240,7 +250,7 @@ export function createAvatar(lookIn, opts = {}) {
     const hm = hatMesh(look.hat);
     hairMeshes(hairId, hairC, !!hm).forEach((h) => { headG.add(h); track(h.geometry); track(h.material); });
     if (hm) { hm.position.y = HEAD / 2 - 0.045; headG.add(hm); hm.traverse((o) => { if (o.isMesh) { track(o.geometry); if (!(o.material.userData && o.material.userData.shared)) track(o.material); } }); }
-    P.faceMat = headMats[4]; P.faceNormal = headMats[4]; P.faceRed = mkMat(faceFrontRed); P.faceWink = mkMat(faceFrontWink);
+    P.faceMat = headMats[4]; P.faceNormal = headMats[4]; P.faceRed = hm2(paintFace(look, skinC, hairC, { underHat, red: true })); P.faceWink = hm2(paintFace(look, skinC, hairC, { underHat, wink: true }));
     model.add(headG);
     P.head = headG;
 
@@ -395,16 +405,24 @@ export function createAvatar(lookIn, opts = {}) {
         P.armL.rotation.x = st.bottle ? -1.15 + idle : -sw * 0.8 + idle;
         P.bottle.visible = !!st.bottle;
         if (st.bottle) P.bottle.rotation.x = -P.armL.rotation.x;
-        const target = st.drink ? -1.95 : st.smoke || st.vape ? -2.05 : sw * 0.8 + idle;
-        P.armR.rotation.x += (target - P.armR.rotation.x) * Math.min(1, dt * 10);
-        P.armR.rotation.z = armPose ? 0.15 : 0;
-        P.armL.rotation.z = -0.04; if (!armPose) P.armR.rotation.z = 0.04;
-        P.head.rotation.x += ((st.drink ? -0.4 : 0.0) + Math.sin(st.t * 0.8) * 0.02 - P.head.rotation.x) * Math.min(1, dt * 8);
+        // mão até a boca (beber / tragar) ou na altura do peito (segurando o baseado/pod)
+        const toMouth = !!(st.drink || st.mouth);
+        if (armPose) {
+          _AQ.setFromUnitVectors(_DOWN, toMouth ? _MOUTH : _CHEST);
+          P.armR.quaternion.slerp(_AQ, Math.min(1, dt * (toMouth ? 9 : 6)));
+        } else {
+          P.armR.rotation.x += (sw * 0.8 + idle - P.armR.rotation.x) * Math.min(1, dt * 10);
+          P.armR.rotation.y *= 0.8; P.armR.rotation.z += (0.04 - P.armR.rotation.z) * Math.min(1, dt * 10);
+        }
+        P.armL.rotation.z = -0.04;
+        P.head.rotation.x += ((st.drink ? -0.45 : st.mouth ? -0.15 : 0.0) + Math.sin(st.t * 0.8) * 0.02 - P.head.rotation.x) * Math.min(1, dt * 8);
         P.head.rotation.z = Math.sin(st.t * 1.3) * 0.1 * st.drunk;
         P.mug.visible = !!st.drink; P.joint.visible = !!st.smoke; P.vape.visible = !!st.vape;
-        if (st.vape) P.vape.rotation.set(-P.armR.rotation.x + 0.2, 0, 0);
-        if (st.drink) P.mug.rotation.set(-P.armR.rotation.x - 0.35, 0, 0);
-        if (st.smoke) { P.joint.rotation.set(-P.armR.rotation.x, 0, 0); P.joint.userData.ember.scale.setScalar(1 + Math.sin(st.t * 12) * 0.2); }
+        // objetos na mão ficam na orientação certa (copo inclinado pra boca, pod com a ponta na boca)
+        const orient = (obj, ex, ey, ez) => { _DQ.setFromEuler(_E.set(ex, ey, ez)); obj.quaternion.copy(_IQ.copy(P.armR.quaternion).invert()).multiply(_DQ); };
+        if (st.vape) orient(P.vape, toMouth ? -0.5 : 0.1, 0, 0);
+        if (st.drink) orient(P.mug, -0.55, 0, 0);
+        if (st.smoke) { orient(P.joint, 0, Math.PI + (toMouth ? 0 : 0.6), 0); P.joint.userData.ember.scale.setScalar(1 + Math.sin(st.t * 12) * 0.2 + (toMouth ? 0.5 : 0)); }
         const bob = Math.abs(Math.sin(st.phase)) * 0.04 * Math.min(1, sp * 1.4);
         torsoBob(bob);
       }
@@ -420,9 +438,20 @@ export function createAvatar(lookIn, opts = {}) {
       } else if (model.rotation.y) model.rotation.y *= 0.9;
       // bêbado: balanço do corpo todo / nocaute: deitado
       const koT = st.ko;
-      model.rotation.z = Math.sin(st.t * 1.7) * 0.09 * st.drunk * (1 - koT);
-      model.rotation.x += ((koT ? -Math.PI / 2 : Math.sin(st.t * 1.1) * 0.05 * st.drunk) - model.rotation.x) * Math.min(1, dt * 6);
-      if (!st.dance) model.position.y += ((koT ? 0.18 : 0) - model.position.y) * Math.min(1, dt * 6);
+      if (st.crawl && P.legL) { // de quatro: joelhos e mãos no chão
+        const cw = Math.sin(st.t * 6) * 0.12; // engatinhando: tronco na horizontal, braços retos no chão, pernas para trás
+        P.legL.rotation.set(-1.0 + cw, 0, 0.05); P.legR.rotation.set(-1.0 - cw, 0, -0.05);
+        P.armL.rotation.set(-1.57 - cw, 0, -0.06); P.armR.rotation.set(-1.57 + cw, 0, 0.06);
+        P.head.rotation.x = -1.05; P.head.rotation.z = 0; P.mug.visible = P.joint.visible = P.vape.visible = P.bottle.visible = false;
+      }
+      model.rotation.z = Math.sin(st.t * 1.7) * 0.09 * st.drunk * (1 - koT) * (st.crawl ? 0 : 1);
+      if (st.fly) { model.rotation.x += dt * 11; model.rotation.z += dt * 4; }
+      else {
+        const rx = koT ? -Math.PI / 2 : st.crawl ? 1.57 : Math.sin(st.t * 1.1) * 0.05 * st.drunk;
+        model.rotation.x += (rx - model.rotation.x) * Math.min(1, dt * (st.crawl ? 9 : 6));
+      }
+      model.position.z += ((st.crawl ? -1.04 : 0) - model.position.z) * Math.min(1, dt * 9);
+      if (!st.dance) model.position.y += (((koT ? 0.18 : st.crawl ? 0.6 : 0) + (st.air || 0)) - model.position.y) * Math.min(1, dt * (st.fly ? 30 : 6));
       if (bubble && performance.now() > bubbleUntil) { root.remove(bubble); bubble.material.map.dispose(); bubble.material.dispose(); bubble = null; }
     },
     dispose() { clear(); if (nameSprite) nameSprite.material.map.dispose(); },

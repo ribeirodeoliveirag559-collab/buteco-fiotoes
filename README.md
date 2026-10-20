@@ -12,12 +12,12 @@ Bar 3D multiplayer em **primeira pessoa**, direto no navegador (PC e celular). T
 0. **Página inicial**: criar conta ou entrar com **nome + senha** (mínimo 3 caracteres, sem repetir; a senha é guardada com hash scrypt no Neon). Conta antiga sem senha: o primeiro login define a senha.
 1. **Guarda-roupa**: o personagem em frente a um guarda-roupa velho; o painel lateral escolhe cabelo, olhos, boca, camisa, calça, calçado, chapéu e óculos (tudo em 3D ao vivo).
 2. **Buteco** (primeira pessoa): `WASD` anda, mouse olha.
-3. **Cerveja não é infinita**: fale com a **Bella** no balcão (`E`) e peça uma cerveja → ela deixa uma **garrafa** na mesinha ao lado → **clique na garrafa** pra servir no copo → **segure `ESPAÇO`** (ou botão esquerdo / botão na tela) ~5 s pra beber. Cada copo bebido = **1 ponto**. O servidor (Neon) controla cada etapa e o tempo.
+3. **Cerveja não é infinita**: fale com a **Bella** atrás do balcão (`E`) e peça uma cerveja → ela **te entrega a garrafa** → fique com ela na mão ou deixe numa mesa/balcão (`G`) e pegue de volta (`E`) → com a garrafa na mão, **clique** pra encher o copo → **segure `ESPAÇO`** (ou botão esquerdo / botão na tela) ~5 s pra beber. Cada copo bebido = **1 ponto**. O servidor (Neon) controla cada etapa e o tempo.
 4. **Placar**: copos do dia. O **campeão do dia** (fecha à meia-noite, fuso de SP) ganha um **cigarro eletrônico com 20 tragadas** (`F`, solta uma fumaça enorme).
 5. **Loja da Bella**: um **pod** custa **20 pontos** da sua carteira (gastar não mexe no placar do dia) e dá +20 tragadas.
 6. **Camarote**: sala VIP com dançarinas, só entra quem está no **TOP 5 do dia**.
 7. **Jukebox** (`E` perto dela): cole um link do YouTube e a música toca pra todo mundo (volume pela distância; no camarote é mais alto). O áudio vem do player oficial do YouTube; nenhuma música é hospedada aqui.
-8. A partir da 10ª cerveja a tela fica borrada/dobrada/balançando; perto da 24ª o personagem apaga por 10 s. `E` no HOMEM do canto escuro = baseado (olhos vermelhos + tela psicodélica).
+8. A partir da 10ª cerveja a tela fica borrada/dobrada/balançando; com ~12 o personagem anda torto e tropeça; no nível máximo (20) ele cai no chão e levanta sem parar até o álcool baixar. `E` no HOMEM do canto escuro = baseado (olhos vermelhos + tela psicodélica).
 
 ## Rodar local
 

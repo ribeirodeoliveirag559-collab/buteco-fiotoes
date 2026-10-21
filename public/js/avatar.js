@@ -415,20 +415,20 @@ export function createAvatar(lookIn, opts = {}) {
       } else if (model.rotation.y) model.rotation.y *= 0.9;
       // bêbado: balanço do corpo todo / nocaute: deitado
       const koT = st.ko;
-      if (st.crawl && P.legL) { // de quatro: joelhos e mãos no chão
+      if ((st.crawl || st.ko) && P.legL) { // de quatro: joelhos e mãos no chão
         const cw = Math.sin(st.t * 6) * 0.12; // engatinhando: tronco na horizontal, braços retos no chão, pernas para trás
         P.legL.rotation.set(P.crawlLeg + cw, 0, 0.05); P.legR.rotation.set(P.crawlLeg - cw, 0, -0.05);
         P.armL.rotation.set(-1.57 - cw, 0, -0.06); P.armR.rotation.set(-1.57 + cw, 0, 0.06);
         P.head.rotation.x = -1.05; P.head.rotation.z = 0; P.mug.visible = P.joint.visible = P.vape.visible = P.bottle.visible = false;
       }
-      model.rotation.z = Math.sin(st.t * 1.7) * 0.09 * st.drunk * (1 - koT) * (st.crawl ? 0 : 1);
+      model.rotation.z = Math.sin(st.t * 1.7) * 0.09 * st.drunk * (1 - koT) * ((st.crawl || koT) ? 0 : 1);
       if (st.fly) { model.rotation.x += dt * 11; model.rotation.z += dt * 4; }
       else {
-        const rx = koT ? -Math.PI / 2 : st.crawl ? 1.57 : Math.sin(st.t * 1.1) * 0.05 * st.drunk;
-        model.rotation.x += (rx - model.rotation.x) * Math.min(1, dt * (st.crawl ? 9 : 6));
+        const rx = (st.crawl || koT) ? 1.57 : Math.sin(st.t * 1.1) * 0.05 * st.drunk;
+        model.rotation.x += (rx - model.rotation.x) * Math.min(1, dt * ((st.crawl || koT) ? 9 : 6));
       }
-      model.position.z += ((st.crawl ? P.crawlZ : 0) - model.position.z) * Math.min(1, dt * 9);
-      if (!st.dance) model.position.y += (((koT ? 0.18 : st.crawl ? P.crawlY : 0) + (st.air || 0)) - model.position.y) * Math.min(1, dt * (st.fly ? 30 : 6));
+      model.position.z += (((st.crawl || koT) ? P.crawlZ : 0) - model.position.z) * Math.min(1, dt * 9);
+      if (!st.dance) model.position.y += ((((st.crawl || koT) ? P.crawlY : 0) + (st.air || 0)) - model.position.y) * Math.min(1, dt * (st.fly ? 30 : 6));
       if (bubble && performance.now() > bubbleUntil) { root.remove(bubble); bubble.material.map.dispose(); bubble.material.dispose(); bubble = null; }
     },
     dispose() { clear(); if (nameSprite) nameSprite.material.map.dispose(); },

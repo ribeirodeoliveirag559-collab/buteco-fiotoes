@@ -550,12 +550,12 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     else if (r && r.ok === false) { applyState(r); me.bac = Math.max(0, me.bac - 1); toast(r.reason === 'rapido' ? 'Calma! O barman não deixou beber tão rápido' : 'Esse copo não valeu ponto'); }
     refreshRanking();
   }
-  // queda de bêbado: fica no chão uns segundos e levanta; repete enquanto o nível estiver no máximo
+  // queda de bêbado: cai de quatro, fica 3 s no chão e levanta; repete enquanto o nível estiver no máximo
   function startFall() {
-    me.koUntil = Date.now() + 2800;
+    me.koUntil = Date.now() + 3000;
     camKick = (Math.random() > 0.5 ? 1 : -1) * 0.9;
     drinkingNow = false; me.drinking = false; drinkT = 0;
-    send({ t: 'dr', v: 0 }); send({ t: 'ko', ms: 2800 }); FT.audio.thud();
+    send({ t: 'dr', v: 0 }); send({ t: 'ko', ms: 3000 }); FT.audio.thud();
     fallT = rnd(5, 8);
     if (!startFall.warned) { startFall.warned = true; toast('Você tá caindo de bêbado! Para de beber e espera baixar', 'skull'); }
     else if (Math.random() < 0.4) toast(['Ops, caiu de novo!', 'Levanta que você consegue', 'O chão é seu amigo'][Math.floor(Math.random() * 3)]);
@@ -954,16 +954,16 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     const bob = Math.sin(bobPhase) * 0.035 * Math.min(1, sp / 2);
     const bobX = Math.cos(bobPhase * 0.5) * 0.02 * Math.min(1, sp / 2);
     const crawlNow = crawling();
-    camYs += ((ko ? 0.3 : crawlNow ? 0.72 + Math.sin(now / 300) * 0.02 : eyeH + bob) - camYs) * Math.min(1, dt * (ko || crawlNow ? 9 : 3.2));
+    camYs += ((ko ? 0.62 + Math.sin(now / 260) * 0.02 : crawlNow ? 0.72 + Math.sin(now / 300) * 0.02 : eyeH + bob) - camYs) * Math.min(1, dt * (ko || crawlNow ? 9 : 3.2));
     if (me.fly) camYs = eyeH + me.air;
     if (me.fly) camRoll += dt * 5;
     const camY = camYs;
-    koPitch += ((ko ? 1.1 : 0) - koPitch) * Math.min(1, dt * (ko ? 8 : 3));
+    koPitch += ((ko ? -0.35 : 0) - koPitch) * Math.min(1, dt * (ko ? 8 : 3));
     camera.position.set(me.x + Math.cos(yaw) * bobX, camY, me.z - Math.sin(yaw) * bobX);
     const sway = dl * (Math.sin(t * 0.9) * 0.05 + Math.sin(t * 2.3) * 0.02);
     const dPitch = dl * Math.sin(t * 0.7) * 0.05 + vmPose.lift * 0.28;
     camera.rotation.order = 'YXZ';
-    camRoll += ((ko ? 0.9 : sway + camKick) - camRoll) * Math.min(1, dt * (ko ? 8 : 4));
+    camRoll += ((ko ? Math.sin(t * 1.6) * 0.12 : sway + camKick) - camRoll) * Math.min(1, dt * (ko ? 8 : 4));
     camera.rotation.set(clamp(pitch + dPitch + koPitch, -1.5, 1.5), yaw + dl * Math.sin(t * 0.5) * 0.06, camRoll);
 
     // modelo em 1ª pessoa
@@ -1150,7 +1150,7 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     if (psyVis < 0.004) psyVis = 0;
     let lid = 0;
     if (drunkVis > 0.5) lid = (drunkVis - 0.5) * 2 * 0.5 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.9 + Math.sin(t * 0.3) * 2), 3);
-    lidKo += ((ko ? 0.95 : 0) - lidKo) * Math.min(1, dt * (ko ? 10 : 2.5));
+    lidKo += ((ko ? 0.35 : 0) - lidKo) * Math.min(1, dt * (ko ? 10 : 2.5));
     lid = Math.max(lid, lidKo);
     post.setEffects(t, drunkVis, psyVis, lid);
     camera.fov = 72 + clamp(1.2 - camera.aspect, 0, 0.8) * 30 + psyVis * 8 * Math.sin(t * 0.8) + drunkVis * 3;

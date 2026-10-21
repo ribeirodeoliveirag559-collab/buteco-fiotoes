@@ -205,10 +205,53 @@
   </div>
 
   <div id="pause" hidden>
-    <div class="pause-card">
+    <div class="pause-card" id="pause-card">
       <div class="neon">BUTECO FIOTÕES</div>
-      <p>Clique pra voltar ao jogo</p>
-      <small>ESC libera o mouse · Tab abre o placar</small>
+      <p class="pause-sub">Jogo pausado · como jogar no PC</p>
+      <div class="tut">
+        <section>
+          <h4><svg class="ic" aria-hidden="true"><use href="#i-user"></use></svg> Andar e olhar</h4>
+          <ul>
+            <li><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Andar (frente, esquerda, trás, direita). As setas também funcionam</span></li>
+            <li><span class="keys"><kbd>Shift</kbd></span><span>Segurar pra correr</span></li>
+            <li><span class="keys"><kbd>Mouse</kbd></span><span>Olhar em volta</span></li>
+            <li><span class="keys"><kbd>Esc</kbd></span><span>Soltar o mouse e abrir este menu</span></li>
+          </ul>
+        </section>
+        <section>
+          <h4><svg class="ic" aria-hidden="true"><use href="#i-beer"></use></svg> Cerveja e garrafa</h4>
+          <ul>
+            <li><span class="keys"><kbd>E</kbd></span><span>Falar com a Bella atrás do balcão e pegar a garrafa (rende 5 copos)</span></li>
+            <li><span class="keys"><kbd>Clique</kbd></span><span>Com a garrafa na mão: encher o copo</span></li>
+            <li><span class="keys"><kbd>Espaço</kbd></span><span>Segurar uns 5 s pra beber o copo (ou segurar o clique)</span></li>
+            <li><span class="keys"><kbd>G</kbd></span><span>Largar a garrafa numa mesa · garrafa vazia vai pro lixo</span></li>
+            <li><span class="keys"><kbd>Q</kbd><i>/</i><kbd>Botão direito</kbd></span><span>Arremessar a garrafa vazia. Quem for atingido voa e fica de quatro</span></li>
+            <li><span class="keys"><kbd>E</kbd></span><span>Pegar a cerveja grátis das mesas ou uma garrafa largada</span></li>
+          </ul>
+        </section>
+        <section>
+          <h4><svg class="ic" aria-hidden="true"><use href="#i-sparkles"></use></svg> Coisas do bar</h4>
+          <ul>
+            <li><span class="keys"><kbd>E</kbd></span><span>Usar o que estiver na mira: jukebox, provador, banheiro, homem escondido, patrocinadores</span></li>
+            <li><span class="keys"><kbd>F</kbd></span><span>Dar um trago no vape (se você tiver)</span></li>
+            <li><span class="keys"><kbd>E</kbd></span><span>Com o baseado na mão: fumar</span></li>
+          </ul>
+        </section>
+        <section>
+          <h4><svg class="ic" aria-hidden="true"><use href="#i-message-circle"></use></svg> Conversar</h4>
+          <ul>
+            <li><span class="keys"><kbd>Enter</kbd><i>/</i><kbd>T</kbd></span><span>Abrir o chat e escrever (Enter envia)</span></li>
+            <li><span class="keys"><kbd>V</kbd></span><span>Ligar / mutar o microfone (chat de voz)</span></li>
+            <li><span class="keys"><kbd>Tab</kbd></span><span>Abrir ou fechar o placar do dia</span></li>
+          </ul>
+        </section>
+      </div>
+      <div class="mic-box">
+        <div><svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg><b>Microfone:</b> aperte <kbd>V</kbd> ou clique no botão abaixo. O navegador vai pedir permissão: clique em <b>Permitir</b>. Quem estiver perto de você no bar te ouve. <kbd>V</kbd> de novo deixa mudo.</div>
+        <button id="pause-mic" class="ghost small" type="button"><svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg> <span>Ligar microfone</span></button>
+      </div>
+      <button id="pause-resume" class="primary" type="button"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg> Voltar ao jogo</button>
+      <small>Ou clique fora do quadro pra voltar</small>
     </div>
   </div>
 

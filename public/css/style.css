@@ -177,8 +177,24 @@ kbd { background: #ffffff22; border-radius: 4px; padding: 0 5px; font-size: .9em
 @keyframes toast { 0% { opacity: 0; transform: translateY(-8px) } 8%, 85% { opacity: 1; transform: none } 100% { opacity: 0 } }
 
 #pause { position: fixed; inset: 0; background: #000a; display: grid; place-items: center; z-index: 8; cursor: pointer; backdrop-filter: blur(3px); pointer-events: auto; }
-.pause-card { text-align: center; display: grid; gap: 8px; }
-.pause-card p { font: 900 20px var(--font); margin: 6px 0 0; } .pause-card small { color: var(--dim); font-weight: 700; }
+.pause-card { text-align: center; display: grid; gap: 10px; cursor: default; background: var(--panel); border: 2px solid var(--line); border-radius: 22px; padding: 16px 20px; width: min(860px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-shadow: 0 10px 50px #000a; }
+.pause-card .neon { font-size: 26px; }
+.pause-card .pause-sub { font: 900 15px var(--font); margin: -4px 0 2px; color: var(--dim); }
+.pause-card small { color: var(--dim); font-weight: 700; }
+.tut { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: left; }
+.tut section { background: var(--panel2); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; }
+.tut h4 { margin: 0 0 6px; display: flex; align-items: center; gap: 6px; font: 900 14px var(--font); color: var(--amber); letter-spacing: .3px; }
+.tut ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tut li { display: grid; grid-template-columns: 116px 1fr; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; line-height: 1.25; }
+.tut .keys { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.tut .keys i { color: var(--dim); font-style: normal; font-size: 11px; }
+.tut kbd, .mic-box kbd { display: inline-block; min-width: 24px; text-align: center; background: linear-gradient(#ffffff2e, #ffffff14); border: 1px solid #ffffff38; border-bottom-width: 3px; border-radius: 7px; padding: 1px 6px; font: 900 12px var(--font); color: var(--text); }
+.mic-box { display: flex; gap: 12px; align-items: center; text-align: left; background: #38e1ff14; border: 1px solid #38e1ff55; border-radius: 16px; padding: 10px 12px; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.mic-box > div .ic { color: var(--cyan); vertical-align: -3px; margin-right: 4px; }
+.mic-box button { flex: none; display: inline-flex; gap: 6px; align-items: center; }
+.mic-box button.on { background: var(--green); color: #102010; border-color: var(--green); }
+#pause-resume { justify-self: center; display: inline-flex; gap: 8px; align-items: center; padding-inline: 26px; }
+@media (max-width: 700px) { .tut { grid-template-columns: 1fr; } .mic-box { flex-direction: column; align-items: stretch; } }
 
 .modal { position: fixed; inset: 0; background: #000b; display: grid; place-items: center; z-index: 10; padding: 16px; pointer-events: auto; }
 .modal-card { background: var(--panel); border: 2px solid var(--amber); border-radius: 20px; padding: 18px 20px; width: min(440px, 100%); max-height: 90vh; max-height: 90dvh; overflow: auto; box-shadow: 0 0 40px #ffb43a33; }

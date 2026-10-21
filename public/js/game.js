@@ -333,6 +333,7 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     signal: (o) => send(Object.assign({ t: 'vo' }, o)),
     onState: (s) => {
       const b = $('btn-voice'); setIcon(b, s === 'on' ? 'mic' : 'mic-off');
+      const pm = $('pause-mic'); if (pm) { pm.classList.toggle('on', s === 'on'); pm.querySelector('span').textContent = s === 'on' ? 'Microfone ligado (clique pra mutar)' : s === 'muted' ? 'Mudo (clique pra desligar a voz)' : 'Ligar microfone'; }
       b.classList.toggle('on', s === 'on'); b.classList.toggle('mute', s === 'muted');
       send({ t: 'vc', v: s === 'off' ? 0 : 1 });
       b.title = s === 'off' ? 'Ligar chat de voz (V)' : s === 'on' ? 'Microfone ligado — toque pra silenciar' : 'Microfone mudo — toque pra desligar a voz';
@@ -772,7 +773,10 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     on(post.canvas, 'mousedown', (e) => { if (!running) return; FT.audio.init(); if (!locked && !isTouch) { lockNow(); return; } if (e.button === 2) { throwBottle(); return; } if (e.button === 0) { if ((target && target.type !== 'vip') || canPour()) interact(); else if (me.empty && !me.glass) throwBottle(); else holdMouse = true; } });
     on(post.canvas, 'contextmenu', (e) => e.preventDefault());
     on(window, 'mouseup', (e) => { if (e.button === 0) holdMouse = false; });
-    on($('pause'), 'click', () => { FT.audio.init(); $('chatform').classList.remove('open'); $('chatinput').blur(); lockNow(); });
+    const resume = () => { FT.audio.init(); $('chatform').classList.remove('open'); $('chatinput').blur(); lockNow(); };
+    on($('pause'), 'click', (e) => { if (!$('pause-card').contains(e.target)) resume(); }); // clique fora do quadro volta ao jogo
+    on($('pause-resume'), 'click', resume);
+    on($('pause-mic'), 'click', async () => { FT.audio.init(); await voice.cycle(); });
 
     on(window, 'keydown', (e) => {
       if (!running) return;

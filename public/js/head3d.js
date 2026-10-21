@@ -6,85 +6,10 @@ import { toTex } from './textures.js';
 import { bake } from './gear-merge.js';
 import { paintHeadSkin, hairTexture, irisColor } from './face.js';
 
-export const RX = 0.172, RY = 0.222, RZ = 0.192;
-const PI = Math.PI, TAU = PI * 2;
-const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const lerp = (a, b, t) => a + (b - a) * t;
+import { RX, RY, RZ, PI, TAU, sstep, lerp, headPoint, dirOf, surf, normalAt, fixSeam, grid } from './head-geo.js';
+import { buildHair } from './hair3d.js';
+export { RX, RY, RZ, headPoint };
 
-// ponto da superfície do crânio na direção (nx,ny,nz): oval, queixo mais estreito, nuca um pouco cheia
-export function headPoint(nx, ny, nz, grow = 0, out = new THREE.Vector3()) {
-  const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-  const k = ny < 0 ? 1 - 0.2 * Math.pow(-ny, 1.7) : 1 - 0.04 * ny * ny;
-  const kz = (nz < 0 ? 1.03 : 1) * (ny < 0 ? 1 - 0.1 * Math.pow(-ny, 1.7) : 1);
-  return out.set(nx * (RX * k + grow), ny * (RY + grow), nz * (RZ * kz + grow));
-}
-const dirOf = (az, el) => [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
-const surf = (az, el, grow = 0) => { const d = dirOf(az, el); return headPoint(d[0], d[1], d[2], grow); };
-function normalAt(az, el) {
-  const e = 0.01, p = surf(az, el), a = surf(az + e, el).sub(p), b = surf(az, el + e).sub(p);
-  return a.cross(b).normalize();
-}
-function fixSeam(g, nu, nv) { // normais iguais nas duas pontas da costura
-  const n = g.attributes.normal, w = nu + 1;
-  for (let j = 0; j <= nv; j++) {
-    const a = j * w, b = j * w + nu;
-    const x = n.getX(a) + n.getX(b), y = n.getY(a) + n.getY(b), z = n.getZ(a) + n.getZ(b), l = Math.hypot(x, y, z) || 1;
-    n.setXYZ(a, x / l, y / l, z / l); n.setXYZ(b, x / l, y / l, z / l);
-  }
-}
-// malha em grade (i = coluna, j = linha) a partir de fn(i,j) -> [x,y,z,u,v]
-function grid(nu, nv, fn, closeU) {
-  const pos = [], uv = [], idx = [];
-  for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) { const p = fn(i, j); pos.push(p[0], p[1], p[2]); uv.push(p[3], p[4]); }
-  const w = nu + 1;
-  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * w + i, b = a + 1, c = a + w, d = c + 1; idx.push(a, c, b, b, c, d); }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx); g.computeVertexNormals();
-  if (closeU) fixSeam(g, nu, nv);
-  return g;
-}
-
-// ---------------- cabelo ----------------
-const HANG = 0.35;                       // metros de queda por radiano abaixo do "equador"
-const D = (m) => PI / 2 + m / HANG;      // limite que desce m metros
-const HAIR = {
-  curto: { f: 0.34 * PI, s: 0.5 * PI, b: 0.64 * PI, thick: 0.016, curl: 0.004, lift: 0.012 },
-  degrade: { f: 0.3 * PI, s: 0.44 * PI, b: 0.58 * PI, thick: 0.009, curl: 0.002, lift: 0.004 },
-  oldmoney: { f: 0.3 * PI, s: 0.48 * PI, b: 0.62 * PI, thick: 0.022, curl: 0.003, lift: 0.022, comb: true },
-  topete: { f: 0.34 * PI, s: 0.5 * PI, b: 0.64 * PI, thick: 0.016, curl: 0.004, lift: 0.01, quiff: true },
-  ondulado: { f: 0.3 * PI, s: D(0.07), b: D(0.12), thick: 0.03, curl: 0.02, lift: 0.02, hang: true, flare: 0.5 },
-  mullet: { f: 0.34 * PI, s: 0.5 * PI, b: D(0.3), thick: 0.016, curl: 0.006, lift: 0.01, hang: true, flare: 0.15 },
-  longo: { f: 0.27 * PI, s: D(0.34), b: D(0.44), thick: 0.02, curl: 0.004, lift: 0.014, hang: true, flare: 0.3 },
-};
-function limitAt(S, a) { const f = a / PI; return f < 0.5 ? lerp(S.f, S.s, sstep(0, 0.5, f)) : lerp(S.s, S.b, sstep(0.5, 1, f)); }
-function hairPoint(S, az, polar, grow) {
-  const el = PI / 2 - polar;
-  if (!S.hang || el >= 0) return surf(az, el, grow);
-  const base = surf(az, 0, grow), drop = -el * HANG, fl = 1 + drop * (S.flare || 0.3);
-  return new THREE.Vector3(base.x * fl, base.y - drop, base.z * fl);
-}
-function hairShell(S) {
-  const NU = 96, NV = 22;
-  return grid(NU, NV + 1, (i, j) => {
-    const az = (i / NU) * TAU - PI, pm = limitAt(S, Math.abs(az));
-    if (j > NV) { const p = hairPoint(S, az, pm, 0.0015); return [p.x, p.y, p.z, (i / NU) * 4, 1]; } // borda volta pra pele
-    const t = j / NV, polar = t * pm;
-    let gr = S.thick + S.lift * Math.pow(Math.max(0, Math.cos(polar)), 2)
-      + S.curl * (0.5 + 0.5 * Math.sin(az * 7 + polar * 9) * Math.sin(polar * 11 - az * 5))
-      + 0.0028 * Math.sin((S.comb ? az * 22 + polar * 16 : az * 28) + Math.sin(polar * 6) * 2);
-    gr *= 1 - 0.45 * sstep(0.86, 1, t);
-    const p = hairPoint(S, az, polar, gr);
-    return [p.x, p.y, p.z, (i / NU) * 4, t];
-  }, true);
-}
-function quiffGeo() {
-  const g = new THREE.SphereGeometry(1, 28, 18), p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + 0.05 * Math.sin(x * 26); p.setXYZ(i, x * k, y * k, z * k); }
-  g.computeVertexNormals();
-  return g;
-}
 // barba: casca sobre maxilar e queixo (das costeletas até embaixo do queixo)
 function beardGeo() {
   const NU = 44, NV = 14;
@@ -243,13 +168,8 @@ export function buildHead(look, skinC, hairC, opts = {}) {
     default: smile();
   }
 
-  // ---- cabelo ----
-  const S = HAIR[look.hair];
-  if (S) {
-    const hm = hairMat.clone(); mats.push(hm); hm.map = tex(hairTexture(hairC, 63), { repeat: [1, 1] });
-    mesh(hairShell(S), hm);
-    if (S.quiff && !opts.underHat) { const q = mesh(quiffGeo(), hm); q.scale.set(0.15, 0.075, 0.12); q.position.set(0, RY * 0.86, RZ * 0.38); q.rotation.x = -0.45; }
-  }
+  // ---- cabelo (cada corte com silhueta e detalhes 3D próprios: hair3d.js) ----
+  const hr = buildHair(look, hairC, { underHat: !!opts.underHat, M, tex, mesh });
 
   // ---- óculos ----
   if (look.glasses === 'grau' || look.glasses === 'sol') {
@@ -288,10 +208,10 @@ export function buildHead(look, skinC, hairC, opts = {}) {
     }
   };
   applyEyes();
-  const hairTop = S ? S.thick + S.lift + 0.01 : 0;
   return {
     group,
-    topY: RY + hairTop + (S && S.quiff ? 0.05 : 0),
+    topY: RY + hr.top,
+    hatScale: hr.hatScale,
     setRed(v) { red = !!v; applyEyes(); },
     setWink(v) { wink = !!v; applyEyes(); },
     dispose() {

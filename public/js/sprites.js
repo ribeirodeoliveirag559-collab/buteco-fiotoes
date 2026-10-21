@@ -98,6 +98,18 @@
     { id: 'mullet', label: 'Mullet' },
     { id: 'degrade', label: 'Degradê' },
     { id: 'oldmoney', label: 'Old Money' },
+    { id: 'blackpower', label: 'Black Power' },
+    { id: 'cacheado', label: 'Cacheado' },
+    { id: 'dreads', label: 'Dreads' },
+    { id: 'nago', label: 'Tranças nagô' },
+    { id: 'moicano', label: 'Moicano' },
+    { id: 'raspado', label: 'Raspado' },
+    { id: 'coque', label: 'Coque' },
+    { id: 'rabo', label: 'Rabo de cavalo' },
+    { id: 'emo', label: 'Franja emo' },
+    { id: 'chanel', label: 'Chanel' },
+    { id: 'liso', label: 'Liso comprido' },
+    { id: 'cowboy', label: 'Peão desfiado' },
     { id: 'longo', label: 'Longo', hidden: true },
   ];
 
@@ -570,7 +582,10 @@
   };
 
   // ---------- Cabelos ----------
+  // cortes novos usam o desenho de pixel mais parecido (a miniatura de verdade é 3D)
+  const HAIR_PIX = { blackpower: 'ondulado', cacheado: 'ondulado', dreads: 'longo', nago: 'degrade', moicano: 'degrade', raspado: 'careca', coque: 'oldmoney', rabo: 'curto', emo: 'ondulado', chanel: 'longo', liso: 'longo', cowboy: 'mullet' };
   function hairFront(g, id) {
+    id = HAIR_PIX[id] || id;
     const { px, mx } = g;
     const h = g.hair, hd = shade(h, -26), hl = shade(h, 30);
     switch (id) {
@@ -628,6 +643,7 @@
     }
   }
   function hairBack(g, id) {
+    id = HAIR_PIX[id] || id;
     const { px, mx } = g;
     const h = g.hair, hd = shade(h, -26), hl = shade(h, 30);
     switch (id) {

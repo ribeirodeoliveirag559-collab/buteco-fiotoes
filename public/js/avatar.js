@@ -210,7 +210,7 @@ export function createAvatar(lookIn, opts = {}) {
     const headG = new THREE.Group();
     headG.position.y = d.headY; headG.scale.setScalar(d.hs);
     headG.add(hd.group);
-    if (hm) { hm.position.y = 0.085; hm.scale.setScalar(0.86); headG.add(hm); hm.traverse((o) => { if (o.isMesh) { track(o.geometry); if (!(o.material.userData && o.material.userData.shared)) track(o.material); } }); }
+    if (hm) { hm.position.y = 0.085; hm.scale.setScalar(0.86 * (hd.hatScale || 1)); headG.add(hm); hm.traverse((o) => { if (o.isMesh) { track(o.geometry); if (!(o.material.userData && o.material.userData.shared)) track(o.material); } }); }
     P.headApi = hd; P.headY = d.headY;
     model.add(headG);
     P.head = headG;

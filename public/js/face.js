@@ -234,7 +234,13 @@ export function hairTexture(hair, seed = 51) {
 
 // ---------------- pele da cabeça oval (mapa equirretangular: frente no meio, u = 0,5) ----------------
 // limite do couro cabeludo pintado embaixo do cabelo 3D (fração de PI a partir do topo): [frente, lado, nuca]
-const SCALP = { curto: [0.33, 0.5, 0.63], degrade: [0.3, 0.56, 0.66], oldmoney: [0.3, 0.48, 0.62], topete: [0.33, 0.5, 0.63], ondulado: [0.29, 0.5, 0.62], mullet: [0.33, 0.5, 0.62], longo: [0.26, 0.5, 0.6] };
+const SCALP = {
+  curto: [0.33, 0.5, 0.63], degrade: [0.3, 0.56, 0.68], oldmoney: [0.3, 0.48, 0.62], topete: [0.33, 0.5, 0.63], ondulado: [0.29, 0.5, 0.62], mullet: [0.33, 0.5, 0.62], longo: [0.26, 0.5, 0.6],
+  blackpower: [0.3, 0.56, 0.66], dreads: [0.32, 0.5, 0.62], moicano: [0.34, 0.54, 0.68], coque: [0.32, 0.5, 0.62], rabo: [0.32, 0.5, 0.62], nago: [0.3, 0.5, 0.64],
+  emo: [0.3, 0.52, 0.62], raspado: [0.34, 0.54, 0.68], cacheado: [0.32, 0.5, 0.63], chanel: [0.3, 0.5, 0.62], liso: [0.25, 0.5, 0.6], cowboy: [0.33, 0.5, 0.62],
+};
+// cortes raspados: o couro cabeludo vira barba por fazer (pontinhos) com essa opacidade
+const STUBBLE = { raspado: 0.62, moicano: 0.5, degrade: 0.55, topete: 0.45, mullet: 0.4 };
 export function paintHeadSkin(look, skin, hair) {
   const W = 512, H = 256;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -269,8 +275,44 @@ export function paintHeadSkin(look, skin, hair) {
     g.lineTo(x, lim * H);
   }
   g.lineTo(W, 0); g.closePath(); g.clip();
+  const stub = STUBBLE[look.hair];
+  if (stub) { // raspado: pontinhos de cabelo curto sobre a pele
+    g.globalAlpha = stub * 0.9; g.fillStyle = shadeHex(hair, -20); g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+    for (let i = 0; i < 9000; i++) { g.fillStyle = r() > 0.3 ? rgba(hair, Math.min(1, stub * 1.4)) : 'rgba(0,0,0,' + stub * 0.45 + ')'; g.fillRect(r() * W, r() * H * 0.75, 1.3, 1.3); }
+    g.restore(); return c;
+  }
   g.fillStyle = shadeHex(hair, -12); g.fillRect(0, 0, W, H);
   for (let i = 0; i < 2600; i++) { const x = r() * W, y = r() * H * 0.7; g.strokeStyle = r() > 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.14)'; g.lineWidth = 1 + r(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y + 6 + r() * 8); g.stroke(); }
   g.restore();
+  return c;
+}
+
+// textura de cabelo por tipo de fio: liso (mechas), gel (liso brilhante), cacheado, crespo, trança/dread
+export function hairTex(hair, kind = 'straight', seed = 63) {
+  const c = canvas(), g = c.getContext('2d'), r = rng(seed);
+  if (kind === 'straight') { strands(g, hair, seed, 0.12, 1, 80, 900); return c; }
+  if (kind === 'slick') {
+    strands(g, hair, seed, 0, 1, 140, 380);
+    const gl = g.createLinearGradient(0, 0, R, 0); gl.addColorStop(0, 'rgba(255,255,255,0)'); gl.addColorStop(0.5, 'rgba(255,255,255,.14)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gl; g.fillRect(0, 0, R, R); return c;
+  }
+  g.fillStyle = hair; g.fillRect(0, 0, R, R);
+  if (kind === 'curly' || kind === 'coily') {
+    const n = kind === 'coily' ? 3400 : 1500, big = kind === 'coily' ? 3 : 7;
+    for (let i = 0; i < n; i++) {
+      const x = r() * R, y = r() * R, rad = 1.5 + r() * big, a = r() * 6.28;
+      g.strokeStyle = r() > 0.55 ? rgba('#ffffff', 0.07 + r() * 0.1) : rgba('#000000', 0.12 + r() * 0.16);
+      g.lineWidth = kind === 'coily' ? 1 : 1.2 + r() * 1.4;
+      g.beginPath(); g.arc(x, y, rad, a, a + 2.4 + r() * 2.2); g.stroke();
+    }
+  } else if (kind === 'braid') { // trança / dread: gomos em V ao longo do fio (v)
+    for (let y = -8; y < R + 16; y += 14) for (let x = -16; x < R + 16; x += 32) {
+      g.fillStyle = rgba('#ffffff', 0.1); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 16, y + 14, x + 32, y); g.quadraticCurveTo(x + 16, y + 6, x, y); g.fill();
+      g.strokeStyle = rgba('#000000', 0.32); g.lineWidth = 2.2; g.beginPath(); g.moveTo(x, y + 1); g.quadraticCurveTo(x + 16, y + 15, x + 32, y + 1); g.stroke();
+    }
+    for (let i = 0; i < 900; i++) { g.fillStyle = r() > 0.5 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.1)'; g.fillRect(r() * R, r() * R, 1, 3); }
+  }
+  const sh = g.createLinearGradient(0, 0, 0, R); sh.addColorStop(0, 'rgba(255,255,255,.06)'); sh.addColorStop(1, 'rgba(0,0,0,.14)');
+  g.fillStyle = sh; g.fillRect(0, 0, R, R);
   return c;
 }

@@ -30,7 +30,7 @@ export const cleanName = (n) =>
 export function cleanLook(l) {
   const out = {};
   if (!l || typeof l !== 'object') return out;
-  for (const k of ['skin', 'hairColor', 'hair', 'eyes', 'mouth', 'shirt', 'pants', 'shoes', 'hat', 'glasses']) {
+  for (const k of ['body', 'skin', 'hairColor', 'hair', 'eyes', 'mouth', 'shirt', 'pants', 'shoes', 'hat', 'glasses']) {
     const v = l[k];
     if (typeof v === 'string' && /^[a-z0-9-]{1,24}$/.test(v)) out[k] = v;
   }

@@ -210,7 +210,7 @@ export function createWardrobe(quality, renderer, look) {
   const TS = 112;
   let thumbRT = null, thumbScene = null, thumbCam = null, thumbAv = null, thumbBuf = null;
   const VIEWS = { // c = altura do centro, d = distância, f = fov, x = deslocamento lateral (3/4)
-    head: { c: 1.62, d: 2.1, f: 17, x: 0.55 }, hat: { c: 1.66, d: 2.5, f: 22, x: 0.45 }, torso: { c: 1.04, d: 2.3, f: 24, x: 0.5 }, legs: { c: 0.42, d: 2.6, f: 24, x: 0.55 }, feet: { c: 0.11, d: 1.25, f: 22, x: 0.62 },
+    head: { c: 1.62, d: 2.1, f: 17, x: 0.55 }, hat: { c: 1.66, d: 2.5, f: 22, x: 0.45 }, torso: { c: 1.04, d: 2.3, f: 24, x: 0.5 }, legs: { c: 0.42, d: 2.6, f: 24, x: 0.55 }, feet: { c: 0.11, d: 1.25, f: 22, x: 0.62 }, full: { c: 0.98, d: 4.6, f: 30, x: 0.5 },
   };
   function initThumbs() {
     if (thumbRT || !renderer) return;

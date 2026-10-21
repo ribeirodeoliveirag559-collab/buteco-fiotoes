@@ -37,7 +37,7 @@ function strands(g, hair, seed, dirX = 0, dirY = 1, len = 60, count = 420) {
 }
 function withClip(g, path, fn) { g.save(); g.beginPath(); path(g); g.clip(); fn(); g.restore(); }
 
-function irisColor(look) {
+export function irisColor(look) {
   if (look.hairColor === 'loiro' || look.hairColor === 'platinado') return '#3f7fc4';
   if (look.hairColor === 'ruivo') return '#4f8a3a';
   if (look.hairColor === 'grisalho') return '#6a7e8e';
@@ -229,5 +229,48 @@ export function paintTop(look, skin, hair) {
 export function hairTexture(hair, seed = 51) {
   const c = canvas(), g = c.getContext('2d');
   strands(g, hair, seed, 0.12, 1, 80, 900);
+  return c;
+}
+
+// ---------------- pele da cabeça oval (mapa equirretangular: frente no meio, u = 0,5) ----------------
+// limite do couro cabeludo pintado embaixo do cabelo 3D (fração de PI a partir do topo): [frente, lado, nuca]
+const SCALP = { curto: [0.33, 0.5, 0.63], degrade: [0.3, 0.56, 0.66], oldmoney: [0.3, 0.48, 0.62], topete: [0.33, 0.5, 0.63], ondulado: [0.29, 0.5, 0.62], mullet: [0.33, 0.5, 0.62], longo: [0.26, 0.5, 0.6] };
+export function paintHeadSkin(look, skin, hair) {
+  const W = 512, H = 256;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const P = (az, el) => [W / 2 + (az / (Math.PI * 2)) * W, ((Math.PI / 2 - el) / Math.PI) * H];
+  const blob = (az, el, rx, ry, col) => {
+    const [x, y] = P(az, el); g.save(); g.translate(x, y); g.scale(1, ry / rx);
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, col); gr.addColorStop(1, col.slice(0, col.lastIndexOf(',') + 1) + '0)');
+    g.fillStyle = gr; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore();
+  };
+  g.fillStyle = skin; g.fillRect(0, 0, W, H);
+  const vg = g.createLinearGradient(0, 0, 0, H);
+  vg.addColorStop(0, 'rgba(255,255,255,.07)'); vg.addColorStop(0.55, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(60,20,10,.10)'); vg.addColorStop(1, 'rgba(40,10,5,.35)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  const r = rng((look.skin || '').length * 31 + 7);
+  for (let i = 0; i < 4200; i++) { g.fillStyle = r() > 0.5 ? 'rgba(255,255,255,.035)' : 'rgba(90,35,20,.045)'; g.fillRect(r() * W, r() * H, 1.4, 1.4); }
+  blob(0, 0.42, 46, 22, 'rgba(255,255,255,.09)');           // testa
+  for (const s of [-1, 1]) {
+    blob(s * 0.58, -0.2, 26, 20, 'rgba(232,88,98,.20)');     // bochechas
+    blob(s * 0.34, 0.08, 20, 11, 'rgba(70,25,15,.16)');      // olheira / órbita
+    blob(s * 0.2, -0.36, 10, 12, 'rgba(70,25,15,.10)');      // sulco do sorriso
+  }
+  blob(0, -0.62, 22, 10, 'rgba(255,255,255,.07)');          // queixo
+  blob(Math.PI, 0.1, 70, 40, 'rgba(0,0,0,.08)');            // nuca
+  if (look.hair === 'careca') { blob(-0.25, 0.95, 40, 14, 'rgba(255,255,255,.22)'); return c; }
+  const L = SCALP[look.hair] || SCALP.curto;
+  const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  g.save(); g.beginPath(); g.moveTo(0, 0);
+  for (let x = 0; x <= W; x += 4) {
+    const f = Math.abs((x - W / 2) / W) * 2; // 0 frente, 1 nuca
+    const lim = f < 0.5 ? L[0] + (L[1] - L[0]) * sm(0, 0.5, f) : L[1] + (L[2] - L[1]) * sm(0.5, 1, f);
+    g.lineTo(x, lim * H);
+  }
+  g.lineTo(W, 0); g.closePath(); g.clip();
+  g.fillStyle = shadeHex(hair, -12); g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 2600; i++) { const x = r() * W, y = r() * H * 0.7; g.strokeStyle = r() > 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.14)'; g.lineWidth = 1 + r(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y + 6 + r() * 8); g.stroke(); }
+  g.restore();
   return c;
 }

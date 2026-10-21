@@ -1,7 +1,7 @@
 // Jogo em primeira pessoa: movimento, câmera, cerveja, baseado, HOMEM, chat, multiplayer.
 import * as THREE from 'three';
 import { rbox } from './shapes.js';
-import { createAvatar, EYE_HEIGHT, lookColors, makeMug, makeJoint, makeBottle, makeVape } from './avatar.js';
+import { createAvatar, EYE_HEIGHT, eyeHeightFor, lookColors, makeMug, makeJoint, makeBottle, makeVape } from './avatar.js';
 import { createMusic, parseYouTube } from './music.js';
 import { toTex } from './textures.js';
 import { BAR } from './bar.js';
@@ -45,6 +45,7 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
 
   // efeitos
   let drunkVis = 0, psyVis = 0, psyStart = 0, psyEnd = 0, bobPhase = 0, camRoll = 0;
+  let eyeH = EYE_HEIGHT; // altura dos olhos conforme o tipo de corpo
   let fallT = 4, stumbleT = 4, camYs = EYE_HEIGHT, koPitch = 0, lidKo = 0, camKick = 0;
 
   // ---------------- modelo em primeira pessoa (braço + caneca) ----------------
@@ -953,8 +954,8 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     const bob = Math.sin(bobPhase) * 0.035 * Math.min(1, sp / 2);
     const bobX = Math.cos(bobPhase * 0.5) * 0.02 * Math.min(1, sp / 2);
     const crawlNow = crawling();
-    camYs += ((ko ? 0.3 : crawlNow ? 0.72 + Math.sin(now / 300) * 0.02 : EYE_HEIGHT + bob) - camYs) * Math.min(1, dt * (ko || crawlNow ? 9 : 3.2));
-    if (me.fly) camYs = EYE_HEIGHT + me.air;
+    camYs += ((ko ? 0.3 : crawlNow ? 0.72 + Math.sin(now / 300) * 0.02 : eyeH + bob) - camYs) * Math.min(1, dt * (ko || crawlNow ? 9 : 3.2));
+    if (me.fly) camYs = eyeH + me.air;
     if (me.fly) camRoll += dt * 5;
     const camY = camYs;
     koPitch += ((ko ? 1.1 : 0) - koPitch) * Math.min(1, dt * (ko ? 8 : 3));
@@ -1164,6 +1165,7 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
   function start(sess) {
     session = sess;
     const look = S.sanitizeLook(sess.look);
+    eyeH = eyeHeightFor(look);
     let beers = sess.beers | 0;
     if (sess.offline) { const v = parseInt(localStorage.getItem('buteco:offline:' + new Date().toDateString()) || '0', 10); beers = isNaN(v) ? 0 : v; }
     me = { pid: sess.pid, name: sess.name, look, x: BAR.spawn.x + rnd(-0.8, 0.8), z: BAR.spawn.z + rnd(-0.3, 0.3), vx: 0, vz: 0, beers, points: sess.points | 0, vape: sess.vape | 0, bottle: sess.bottle | 0, glass: sess.glass | 0, bottleMesh: null, bac: 0, hasJoint: false, jointReadyAt: 0, smokeLeft: 0, puffT: 0, koUntil: 0, koWas: false, redUntil: 0, drinking: false, smoking: false, peeing: 0, peeReadyAt: 0, peeFace: 0 };
@@ -1176,7 +1178,7 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     drinkT = 0; drinkingNow = false; holdBtn = holdKey = holdMouse = false; pour = null; vapingT = 0; vapeCloudDone = true; vipAllowed = false; vipRank = 0; bar.setVipOpen(false);
     me.bottleLoc = me.bottle ? 'hand' : null;
     drunkVis = Math.min(1, drunkLevel()); psyVis = 0; psyEnd = 0;
-    fallT = 4; stumbleT = 4; camYs = EYE_HEIGHT; koPitch = 0; lidKo = 0; camKick = 0;
+    fallT = 4; stumbleT = 4; camYs = eyeH; koPitch = 0; lidKo = 0; camKick = 0;
     update._start = 0;
     players.clear();
     $('chatlog').innerHTML = ''; $('btn-smoke').hidden = true; $('dialog').hidden = true; $('ranking').hidden = true; $('hint').classList.remove('gone'); $('prompt').hidden = true;
@@ -1190,7 +1192,7 @@ export function createGame({ bar, camera, post, cfg, quality, onWardrobe }) {
     bindInput();
     syncPause();
     keepAwake();
-    camera.position.set(me.x, EYE_HEIGHT, me.z);
+    camera.position.set(me.x, eyeH, me.z);
     camera.rotation.set(0, yaw, 0);
 
     net = FT.createNet({

@@ -7,6 +7,7 @@ const CROPS = { head: [4, 0, 32, 30], torso: [2, 26, 36, 24], legs: [6, 44, 28, 
 const TABS = [
   {
     id: 'corpo', label: 'CORPO', icon: 'user', sections: [
+      { key: 'body', label: 'Tipo de corpo', list: S.BODIES, crop: 'torso', region: 'full' },
       { key: 'hair', label: 'Cabelo', list: S.HAIRS, crop: 'head', noHat: true },
       { key: 'hairColor', label: 'Cor do cabelo', list: S.HAIRCOLORS, swatch: true },
       { key: 'eyes', label: 'Olhos', list: S.EYES, crop: 'head', noHat: true },
@@ -89,12 +90,12 @@ export function initWardrobeUI(h) {
     (function next() {
       if (gen !== thumbGen || !list.length) return;
       const t = list.shift(), { sec, opt, cv } = t;
-      const base = Object.assign({}, S.DEFAULT_LOOK, { skin: look.skin, hairColor: look.hairColor, hair: look.hair });
+      const base = Object.assign({}, S.DEFAULT_LOOK, { skin: look.skin, hairColor: look.hairColor, hair: look.hair, body: look.body });
       const lk = Object.assign(base, { [sec.key]: opt.id });
       if (sec.noHat) lk.hat = 'nenhum';
       if (sec.key !== 'glasses' && sec.key !== 'hat') lk.glasses = 'nenhum';
       if (sec.key === 'hat') lk.hair = look.hair;
-      h.thumb(S.sanitizeLook(lk), sec.key === 'hat' ? 'hat' : (REGION[sec.crop] || 'torso'), cv);
+      h.thumb(S.sanitizeLook(lk), sec.key === 'hat' ? 'hat' : (sec.region || REGION[sec.crop] || 'torso'), cv);
       setTimeout(next, 8);
     })();
   }

@@ -84,6 +84,12 @@
     { id: 'barba', label: 'Barbudo' },
     { id: 'batom', label: 'Batom', hidden: true },
   ];
+  const BODIES = [
+    { id: 'normal', label: 'Normal' },
+    { id: 'alto', label: 'Alto e magro' },
+    { id: 'baixo', label: 'Baixinho' },
+    { id: 'gordo', label: 'Gordão' },
+  ];
   const HAIRS = [
     { id: 'ondulado', label: 'Ondulado' },
     { id: 'careca', label: 'Careca' },
@@ -559,7 +565,7 @@
 
   const byId = (arr) => Object.fromEntries(arr.map((o) => [o.id, o]));
   const IDX = {
-    skin: byId(SKINS), hairColor: byId(HAIRCOLORS), eyes: byId(EYES), mouth: byId(MOUTHS), hair: byId(HAIRS),
+    body: byId(BODIES), skin: byId(SKINS), hairColor: byId(HAIRCOLORS), eyes: byId(EYES), mouth: byId(MOUTHS), hair: byId(HAIRS),
     shirt: byId(SHIRTS), pants: byId(PANTS), shoes: byId(SHOES), hat: byId(HATS), glasses: byId(GLASSES),
   };
 
@@ -863,7 +869,7 @@
   // ---------- Look: padrão, aleatório, validação ----------
   const visible = (arr) => arr.filter((o) => !o.hidden);
   const DEFAULT_LOOK = {
-    skin: 'bronze', hairColor: 'castanho', hair: 'curto', eyes: 'normal', mouth: 'sorriso',
+    body: 'normal', skin: 'bronze', hairColor: 'castanho', hair: 'curto', eyes: 'normal', mouth: 'sorriso',
     shirt: 'xadrez-vermelho', pants: 'jeans-azul', shoes: 'americana', hat: 'palha-branco', glasses: 'nenhum',
   };
   function sanitizeLook(l) {
@@ -877,14 +883,14 @@
   function randomLook() {
     const pick = (a) => a[Math.floor(Math.random() * a.length)].id;
     return {
-      skin: pick(SKINS), hairColor: pick(HAIRCOLORS), hair: pick(visible(HAIRS)), eyes: pick(visible(EYES)), mouth: pick(visible(MOUTHS)),
+      body: pick(BODIES), skin: pick(SKINS), hairColor: pick(HAIRCOLORS), hair: pick(visible(HAIRS)), eyes: pick(visible(EYES)), mouth: pick(visible(MOUTHS)),
       shirt: pick(visible(SHIRTS)), pants: pick(visible(PANTS)), shoes: pick(SHOES), hat: pick(HATS), glasses: pick(GLASSES),
     };
   }
 
   FT.sprites = {
     W, H, get: getSprite, shade,
-    SKINS, HAIRCOLORS, EYES: visible(EYES), MOUTHS: visible(MOUTHS), HAIRS: visible(HAIRS), SHIRTS: visible(SHIRTS), PANTS: visible(PANTS), SHOES, HATS, GLASSES,
+    BODIES, SKINS, HAIRCOLORS, EYES: visible(EYES), MOUTHS: visible(MOUTHS), HAIRS: visible(HAIRS), SHIRTS: visible(SHIRTS), PANTS: visible(PANTS), SHOES, HATS, GLASSES,
     DEFAULT_LOOK, sanitizeLook, randomLook,
     BARMAID_LOOK: {
       skin: 'clara', hairColor: 'loiro', hair: 'longo', eyes: 'sedutor', mouth: 'batom',

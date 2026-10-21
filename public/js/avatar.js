@@ -141,6 +141,35 @@ export function makeBottle() {
   [body, shoulder, neck, cap, label].forEach((m) => { m.castShadow = true; g.add(m); });
   return g;
 }
+// garrafa de whisky: corpo largo âmbar escuro, rótulo preto com faixa dourada, rolha preta
+export function makeWhisky() {
+  const g = new THREE.Group();
+  const glass = new THREE.MeshStandardMaterial({ color: 0x7a3a0a, roughness: 0.18, metalness: 0.15, emissive: 0x3a1a04, emissiveIntensity: 0.55 });
+  const body = new THREE.Mesh(rbox(0.088, 0.17, 0.088, 0.018), glass); body.position.y = 0.085; // corpo quadrado (diferente da long neck de cerveja)
+  const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.05, 4, 1), glass); shoulder.position.y = 0.195; shoulder.rotation.y = Math.PI / 4;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 12), glass); neck.position.y = 0.245;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.0225, 0.0215, 0.032, 12), new THREE.MeshStandardMaterial({ color: 0x15110e, roughness: 0.6 })); cap.position.y = 0.286;
+  const label = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.0915), new THREE.MeshStandardMaterial({ color: 0x141011, roughness: 0.7 })); label.position.y = 0.085; // rótulo preto na frente e atrás
+  const gold = new THREE.MeshStandardMaterial({ color: 0xe0b84e, metalness: 0.85, roughness: 0.3, emissive: 0x3a2a08, emissiveIntensity: 0.4 });
+  for (const z of [0.0461, -0.0461]) {
+    const badge = new THREE.Mesh(new THREE.CircleGeometry(0.0185, 16), gold); badge.position.set(0, 0.095, z); if (z < 0) badge.rotation.y = Math.PI; g.add(badge);
+    const bar = new THREE.Mesh(new THREE.PlaneGeometry(0.056, 0.008), gold); bar.position.set(0, 0.058, z); if (z < 0) bar.rotation.y = Math.PI; g.add(bar);
+  }
+  [body, shoulder, neck, cap, label].forEach((m) => { m.castShadow = true; g.add(m); });
+  return g;
+}
+// dose (copinho) de whisky: vidro baixo com bebida âmbar; mesma interface da caneca (setLevel / tickBubbles)
+export function makeShot() {
+  const g = new THREE.Group();
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.021, 0.056, 14, 1, true), new THREE.MeshStandardMaterial({ color: 0xeaf4ff, transparent: true, opacity: 0.25, roughness: 0.08, side: THREE.DoubleSide, depthWrite: false }));
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.021, 0.012, 14), new THREE.MeshStandardMaterial({ color: 0xdcecff, transparent: true, opacity: 0.55, roughness: 0.08 })); base.position.y = -0.03;
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.0255, 0.0205, 0.046, 14), new THREE.MeshStandardMaterial({ color: 0xc9740e, emissive: 0x6a3004, emissiveIntensity: 0.45, roughness: 0.25 }));
+  liquid.geometry.translate(0, 0.023, 0); liquid.position.y = -0.024;
+  g.add(glass, base, liquid);
+  g.userData = { liquid, tickBubbles() {}, setLevel(v) { liquid.scale.y = Math.max(0.001, v); liquid.visible = v > 0.01; } };
+  g.userData.setLevel(1);
+  return g;
+}
 export function makeVape() {
   const g = new THREE.Group();
   const body = new THREE.Mesh(rbox(0.03, 0.115, 0.018), new THREE.MeshStandardMaterial({ color: 0x1b1d26, roughness: 0.3, metalness: 0.6 }));
@@ -279,11 +308,13 @@ export function createAvatar(lookIn, opts = {}) {
     const unscale = (gr) => gr.scale.set(1 / d.aw, 1 / d.al, 1 / d.aw); // itens na mão no tamanho certo
     P.handL = new THREE.Group(); P.handL.position.set(0, -ARM_L + 0.02, 0.02); unscale(P.handL); P.armL.add(P.handL);
     P.bottle = makeBottle(); P.bottle.scale.setScalar(0.75); P.bottle.position.set(0, 0.05, 0.05); P.bottle.visible = false; P.handL.add(P.bottle);
+    P.whisky = makeWhisky(); P.whisky.scale.setScalar(0.8); P.whisky.position.set(0, 0.05, 0.05); P.whisky.visible = false; P.handL.add(P.whisky);
     // item na mão direita
     P.hand = new THREE.Group();
     P.hand.position.set(0, -ARM_L + 0.02, 0.0); unscale(P.hand);
     P.armR.add(P.hand);
     P.mug = makeMug(); P.mug.position.set(0, 0.0, 0.0); P.mug.visible = false; P.hand.add(P.mug);
+    P.shot = makeShot(); P.shot.scale.setScalar(1.35); P.shot.visible = false; P.hand.add(P.shot);
     P.joint = makeJoint(); P.joint.position.set(0, 0, 0.03); P.joint.visible = false; P.hand.add(P.joint);
     P.vape = makeVape(); P.vape.position.set(0, 0.02, 0.03); P.vape.visible = false; P.hand.add(P.vape);
     // alvos do braço direito (boca / peito) e pose de quatro, de acordo com o corpo
@@ -380,8 +411,8 @@ export function createAvatar(lookIn, opts = {}) {
       if (P.legL) {
         P.legL.rotation.x = sw; P.legR.rotation.x = -sw;
         P.armL.rotation.x = st.bottle ? -1.15 + idle : -sw * 0.8 + idle;
-        P.bottle.visible = !!st.bottle;
-        if (st.bottle) P.bottle.rotation.x = -P.armL.rotation.x;
+        P.bottle.visible = !!st.bottle && !st.whisky; P.whisky.visible = !!st.bottle && !!st.whisky;
+        if (st.bottle) (st.whisky ? P.whisky : P.bottle).rotation.x = -P.armL.rotation.x;
         // mão até a boca (beber / tragar) ou na altura do peito (segurando o baseado/pod)
         const toMouth = !!(st.drink || st.mouth);
         if (armPose) {
@@ -394,11 +425,11 @@ export function createAvatar(lookIn, opts = {}) {
         P.armL.rotation.z = -0.04 + P.dims.splay;
         P.head.rotation.x += ((st.drink ? -0.45 : st.mouth ? -0.15 : 0.0) + Math.sin(st.t * 0.8) * 0.02 - P.head.rotation.x) * Math.min(1, dt * 8);
         P.head.rotation.z = Math.sin(st.t * 1.3) * 0.1 * st.drunk;
-        P.mug.visible = !!st.drink; P.joint.visible = !!st.smoke; P.vape.visible = !!st.vape;
+        P.mug.visible = !!st.drink && !st.shot; P.shot.visible = !!st.drink && !!st.shot; P.joint.visible = !!st.smoke; P.vape.visible = !!st.vape;
         // objetos na mão ficam na orientação certa (copo inclinado pra boca, pod com a ponta na boca)
         const orient = (obj, ex, ey, ez) => { _DQ.setFromEuler(_E.set(ex, ey, ez)); obj.quaternion.copy(_IQ.copy(P.armR.quaternion).invert()).multiply(_DQ); };
         if (st.vape) orient(P.vape, toMouth ? -0.5 : 0.1, 0, 0);
-        if (st.drink) orient(P.mug, -0.55, 0, 0);
+        if (st.drink) orient(st.shot ? P.shot : P.mug, -0.55, 0, 0);
         if (st.smoke) { orient(P.joint, 0, Math.PI + (toMouth ? 0 : 0.6), 0); P.joint.userData.ember.scale.setScalar(1 + Math.sin(st.t * 12) * 0.2 + (toMouth ? 0.5 : 0)); }
         const bob = Math.abs(Math.sin(st.phase)) * 0.04 * Math.min(1, sp * 1.4);
         torsoBob(bob);
@@ -419,7 +450,7 @@ export function createAvatar(lookIn, opts = {}) {
         const cw = Math.sin(st.t * 6) * 0.12; // engatinhando: tronco na horizontal, braços retos no chão, pernas para trás
         P.legL.rotation.set(P.crawlLeg + cw, 0, 0.05); P.legR.rotation.set(P.crawlLeg - cw, 0, -0.05);
         P.armL.rotation.set(-1.57 - cw, 0, -0.06); P.armR.rotation.set(-1.57 + cw, 0, 0.06);
-        P.head.rotation.x = -1.05; P.head.rotation.z = 0; P.mug.visible = P.joint.visible = P.vape.visible = P.bottle.visible = false;
+        P.head.rotation.x = -1.05; P.head.rotation.z = 0; P.mug.visible = P.shot.visible = P.joint.visible = P.vape.visible = P.bottle.visible = P.whisky.visible = false;
       }
       model.rotation.z = Math.sin(st.t * 1.7) * 0.09 * st.drunk * (1 - koT) * ((st.crawl || koT) ? 0 : 1);
       if (st.fly) { model.rotation.x += dt * 11; model.rotation.z += dt * 4; }

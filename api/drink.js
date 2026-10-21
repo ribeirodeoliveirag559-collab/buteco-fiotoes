@@ -1,10 +1,12 @@
-import { db, readJson, send, auth, stateOf, BOTTLE_SERVINGS } from './_db.js';
+import { db, readJson, send, auth, stateOf, BOTTLE_SERVINGS, WHISKY_SHOTS } from './_db.js';
 
 // Cerveja não é infinita. O caminho é:
 //   order  -> a garçonete entrega uma garrafa               (bottle = 5 copos)
 //   pour   -> clicar na garrafa e servir um copo            (bottle -= 1, glass = 1)
 //   start/finish -> beber o copo (>= MIN_MS)                (glass = 0, +1 ponto)
-const MIN_MS = 4400;
+// Whisky (pego em cima do balcão): action 'whisky' -> bottle = -5 doses; cada dose é um "copo" de 3 s.
+const MIN_MS = 4400;      // cerveja: 5 s no cliente
+const MIN_MS_SHOT = 2500; // dose de whisky: 3 s no cliente
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'method' });
@@ -18,18 +20,26 @@ export default async function handler(req, res) {
     switch (body.action) {
       case 'grab': // cerveja grátis deixada nas mesas
       case 'order':
+      case 'whisky': { // whisky em cima do balcão
         if (me.bottle || me.glass) return reply(false, me.glass ? 'copo-cheio' : 'ja-tem-garrafa');
-        await sql`update players set bottle = ${BOTTLE_SERVINGS}, last_seen = now() where pid = ${me.pid}`;
+        const start = body.action === 'whisky' ? -WHISKY_SHOTS : BOTTLE_SERVINGS;
+        await sql`update players set bottle = ${start}, last_seen = now() where pid = ${me.pid}`;
         return reply(true);
+      }
 
-      case 'pour':
+      case 'pour': {
         if (!me.bottle) return reply(false, 'sem-garrafa');
         if (me.glass) return reply(false, 'copo-cheio');
-        // atômico: só serve se ainda tem cerveja na garrafa e o copo está vazio
-        const poured = await sql`
-          update players set bottle = bottle - 1, glass = 1, last_seen = now()
-          where pid = ${me.pid} and bottle > 0 and glass = 0 returning bottle`;
+        // atômico: só serve se ainda tem bebida na garrafa e o copo está vazio
+        const poured = me.bottle < 0
+          ? await sql`
+            update players set bottle = bottle + 1, glass = 2, last_seen = now()
+            where pid = ${me.pid} and bottle < 0 and glass = 0 returning bottle`
+          : await sql`
+            update players set bottle = bottle - 1, glass = 1, last_seen = now()
+            where pid = ${me.pid} and bottle > 0 and glass = 0 returning bottle`;
         return poured.length ? reply(true) : reply(false, 'sem-garrafa');
+      }
 
       case 'start':
         if (!me.glass) return reply(false, 'sem-copo');
@@ -42,7 +52,7 @@ export default async function handler(req, res) {
           select (extract(epoch from (now() - drink_started_at)) * 1000)::int as ms
           from players where pid = ${me.pid} and drink_started_at is not null`;
         const ms = rows[0] ? rows[0].ms : null;
-        if (ms == null || ms < MIN_MS) return reply(false, 'rapido');
+        if (ms == null || ms < (me.glass === 2 ? MIN_MS_SHOT : MIN_MS)) return reply(false, 'rapido');
         await sql`
           insert into scores (day, pid, beers, last_beer_at)
           values ((now() at time zone 'America/Sao_Paulo')::date, ${me.pid}, 1, now())

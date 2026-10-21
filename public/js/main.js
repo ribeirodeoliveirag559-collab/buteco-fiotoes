@@ -173,7 +173,7 @@ async function enter({ look }) {
   if (r.error === 401) { clearAcct(); acct = null; showHome('Sua sessão expirou. Entre de novo.'); return; }
   if (r.error || !r.pid) { $('enter-error').textContent = 'Não consegui entrar agora. Tente de novo.'; return; }
   acct.look = look; saveAcct(acct);
-  const session = { pid: acct.pid, token: acct.token, name: acct.name, look, beers: r.beers, points: r.points, vape: r.vape, bottle: r.bottle, glass: r.glass, notice: r.notice, offline: false };
+  const session = { pid: acct.pid, token: acct.token, name: acct.name, look, beers: r.beers, points: r.points, vape: r.vape, bottle: r.bottle, glass: r.glass, bottleKind: r.bottleKind, glassKind: r.glassKind, notice: r.notice, offline: false };
   await new Promise((res) => setTimeout(res, 30));
   if (!bar) { bar = createBar(quality, renderer); bar.scene.add(gameCam); }
   if (!game) game = createGame({ bar, camera: gameCam, post, cfg, quality, onWardrobe: backToWardrobe });

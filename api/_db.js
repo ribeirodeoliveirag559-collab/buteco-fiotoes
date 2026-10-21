@@ -38,6 +38,11 @@ export function cleanLook(l) {
 }
 
 export const BOTTLE_SERVINGS = 5; // cada garrafa rende até 5 copos
+export const WHISKY_SHOTS = 5;    // garrafa de whisky: 5 doses
+// O whisky reaproveita as colunas que já existem (sem mexer no schema do Neon):
+//   players.bottle:  > 0 = cerveja (copos restantes) · < 0 = whisky (doses restantes, -5..-1)
+//   players.glass:   0 = vazio · 1 = copo de cerveja cheio · 2 = dose de whisky cheia
+// O cliente sempre recebe o estado já decodificado (bottle = quantidade, bottleKind / glassKind = tipo).
 export const VAPE_USES = 20;
 export const POD_COST = 20;
 
@@ -59,7 +64,11 @@ export async function stateOf(sql, pid) {
       coalesce((select sum(beers) from scores where pid = p.pid), 0)::int - p.spent as points
     from players p where p.pid = ${pid}`;
   const s = r[0] || { bottle: 0, glass: 0, vape: 0, beers: 0, points: 0 };
-  return { beers: s.beers, points: s.points, vape: s.vape, bottle: s.bottle, glass: s.glass };
+  return {
+    beers: s.beers, points: s.points, vape: s.vape,
+    bottle: Math.abs(s.bottle), bottleKind: s.bottle < 0 ? 'whisky' : s.bottle > 0 ? 'beer' : null,
+    glass: s.glass ? 1 : 0, glassKind: s.glass === 2 ? 'whisky' : s.glass ? 'beer' : null,
+  };
 }
 
 // Fecha os dias que já acabaram: o maior pontuador ganha um cigarro eletrônico (20 usos).

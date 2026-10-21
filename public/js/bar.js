@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { rbox } from './shapes.js';
 import * as TX from './textures.js';
-import { createAvatar, makeMug, makeBottle } from './avatar.js';
+import { createAvatar, makeMug, makeBottle, makeWhisky, makeShot } from './avatar.js';
 import { drawIcon } from './ui-icons.js';
 import { applyEnv } from './env.js';
 import { SPONSORS } from './sponsors.js';
@@ -15,6 +15,7 @@ export const BAR = {
   npcPos: { x: -8.6, z: 5.4 },
   poster: { x: 5.6, y: 1.95, z: -6.82, w: 5.4, h: 2.6 },
   maidPos: { x: -4.6, z: -6.55 },
+  whisky: { x: -4.45, y: 1.27, z: -5.5 }, // garrafas de whisky em cima do balcão, na frente da Bella
   serviceTable: { x: -0.35, z: -5.15 },
   jukebox: { x: 9.2, z: -3.2 },
   vipDoor: { x: 10, z: 0 },
@@ -137,6 +138,29 @@ export function createBar(quality = 'high', renderer = null) {
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), new THREE.MeshStandardMaterial({ color: [0xdd3333, 0x3377aa, 0x33aa44, 0xddaa33, 0x8844aa][i] })); handle.position.set(x, 1.52, -5.95); root.add(handle);
   }
   for (const x of [-8.4, -3.3, -2.6, -1.9]) { const m = makeMug(); m.position.set(x, 1.19, -5.55); m.scale.setScalar(1.1); root.add(m); }
+
+  // estação de WHISKY em cima do balcão (pegar com E): bandeja, 3 garrafas, doses e cartaz
+  {
+    const W = BAR.whisky, topY = 1.12;
+    const tray = new THREE.Mesh(rbox(0.66, 0.026, 0.26, 0.012), new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.6, metalness: 0.1 }));
+    tray.position.set(W.x, topY + 0.013, W.z); tray.castShadow = true; root.add(tray);
+    [[-0.19, 0.01], [0, -0.025], [0.19, 0.005]].forEach(([dx, dz], i) => {
+      const b = makeWhisky(); b.scale.setScalar(1.3); b.position.set(W.x + dx, topY + 0.026, W.z + dz); b.rotation.y = i * 0.35 - 0.35; root.add(b);
+    });
+    for (const dx of [-0.43, -0.34, 0.34, 0.43]) { const s = makeShot(); s.scale.setScalar(1.3); s.position.set(W.x + dx, topY + 0.037, W.z + 0.02); root.add(s); }
+    // cartaz de mesa
+    const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+    const g = c.getContext('2d');
+    const bg = g.createLinearGradient(0, 0, 0, 160); bg.addColorStop(0, '#26150c'); bg.addColorStop(1, '#120a06');
+    g.fillStyle = bg; g.beginPath(); g.roundRect(4, 4, 504, 152, 22); g.fill();
+    g.strokeStyle = '#d9b24a'; g.lineWidth = 6; g.stroke();
+    g.fillStyle = '#ffc24a'; g.font = '900 78px Bungee, Impact, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = '#ff9a1a'; g.shadowBlur = 14; g.fillText('WHISKY', 256, 66); g.shadowBlur = 0;
+    g.fillStyle = '#f1dcb0'; g.font = '800 30px Nunito, sans-serif'; g.fillText('5 doses · 3 s cada · bate rápido', 256, 128);
+    const ct = TX.toTex(c, { aniso: 8 });
+    const card = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.1125), new THREE.MeshStandardMaterial({ map: ct, emissiveMap: ct, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.6 }));
+    card.position.set(W.x, topY + 0.1, W.z + 0.17); card.rotation.x = -0.32; root.add(card);
+  }
 
   // banquetas do balcão
   const seatMat = L({ color: 0x8a2a2a });
@@ -399,8 +423,8 @@ export function createBar(quality = 'high', renderer = null) {
   }
   // garrafas deixadas sobre mesas (minhas e dos outros)
   const bottles = [];
-  function placeBottle(p) {
-    const b = makeBottle(); b.position.set(p.x, p.y, p.z); b.scale.setScalar(0.001);
+  function placeBottle(p, whisky = false) {
+    const b = whisky ? makeWhisky() : makeBottle(); b.position.set(p.x, p.y, p.z); b.scale.setScalar(0.001);
     b.userData.spawnT = 0; b.userData.isBottle = true; root.add(b); bottles.push(b);
     return b;
   }
